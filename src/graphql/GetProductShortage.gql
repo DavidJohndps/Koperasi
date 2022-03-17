@@ -1,0 +1,14 @@
+query GetProductShortage($stock: Int) {
+  Products(stock: $stock) {
+    ok
+    product {
+      id
+      name
+      desc
+      stock
+      price
+      createdAt
+      updatedAt
+    }
+  }
+}

@@ -1,0 +1,16 @@
+query GetActivity($isRecent: Boolean, $sort: SORTING) {
+  Activities(isRecent: $isRecent, sort: $sort) {
+    ok
+    activity {
+      id
+      name
+      desc
+      verBy {
+        id
+        username
+        position
+      }
+      createdAt
+    }
+  }
+}

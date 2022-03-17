@@ -1,0 +1,22 @@
+query GetTransaction {
+  Transactions {
+    ok
+    transaction {
+      id
+      product {
+        id
+        name
+      }
+      price
+      qty
+      total
+      verBy {
+        id
+        email
+        username
+        position
+      }
+      createdAt
+    }
+  }
+}

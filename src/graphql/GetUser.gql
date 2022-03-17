@@ -1,0 +1,11 @@
+query GetUsers {
+  Users {
+    ok
+    user {
+      id
+      email
+      username
+      position
+    }
+  }
+}

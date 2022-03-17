@@ -1,0 +1,21 @@
+mutation CreateTransaction($input: transactionInput) {
+  test(input: $input) {
+    ok
+    transaction {
+      id
+      product {
+        id
+        name
+      }
+      price
+      qty
+      total
+      verBy {
+        id
+        username
+        position
+      }
+      createdAt
+    }
+  }
+}
