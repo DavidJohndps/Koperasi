@@ -1,0 +1,10 @@
+query GetAsset {
+  Asset {
+    id
+    name
+    assetCode
+    boughtPrice
+    boughtSince
+    desc
+  }
+}

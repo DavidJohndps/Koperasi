@@ -43,14 +43,24 @@
             rounded
           ></v-text-field>
           <v-text-field
-            v-model="product.input.price"
-            label="Price"
+            v-model="product.input.basePrice"
+            type="number"
+            label="Base Price"
+            clearable
+            solo
+            rounded
+          ></v-text-field>
+          <v-text-field
+            v-model="product.input.profit"
+            type="number"
+            label="Profit"
             clearable
             solo
             rounded
           ></v-text-field>
           <v-text-field
             v-model="product.input.stock"
+            type="number"
             label="Stock"
             clearable
             solo
@@ -76,12 +86,11 @@
       </v-card>
     </v-dialog>
     <v-row>
-      <v-col cols="12">
+      <v-col cols="4" v-for="product in Products" :key="product.id">
         <Product
           v-show="Products.length > 0"
-          v-for="product in Products"
           :product="product"
-          :key="product.id"
+          :key="product.name"
         />
       </v-col>
     </v-row>
@@ -91,8 +100,8 @@
 <script>
 import store from "../store";
 import Product from "../components/Product.vue";
-import GetProduct from "../graphql/GetProduct.gql";
-import Create_Product from "../graphql/createProduct.gql";
+import GET_PRODUCT from "../graphql/GetProduct.gql";
+import CREATE_PRODUCT from "../graphql/createProduct.gql";
 export default {
   components: {
     Product,
@@ -108,8 +117,9 @@ export default {
       product: {
         input: {
           name: null,
-          desec: null,
-          price: null,
+          desc: null,
+          basePrice: null,
+          profit: null,
           stock: null,
         },
         dialog: false,
@@ -118,7 +128,7 @@ export default {
   },
   apollo: {
     products: {
-      query: GetProduct,
+      query: GET_PRODUCT,
       update: (data) => data.Products.product,
       result: ({ data }) => {
         store.commit("addProduct", data.Products.product);
@@ -134,11 +144,16 @@ export default {
     //Remember to refractor function, so that this function can be used for create and update product
     async CreateProduct() {
       try {
-        const { input } = this.product;
+        const { basePrice, profit, stock, ...input } = this.product.input;
         const result = await this.$apollo.mutate({
-          mutation: Create_Product,
+          mutation: CREATE_PRODUCT,
           variables: {
-            input,
+            input: {
+              ...input,
+              basePrice: parseFloat(basePrice),
+              profit: parseInt(profit),
+              stock: parseInt(stock),
+            },
           },
         });
         const { ok, product, error } = result.data.createProduct;

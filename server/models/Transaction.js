@@ -2,7 +2,8 @@ const {model, Schema} = require('mongoose')
 
 const transactionSchema = new Schema({
     product: [String],
-    price: [Number],
+    basePrice: [Number],
+    profit: [Number],
     qty: [Number],
     total: Number,
     verBy: String

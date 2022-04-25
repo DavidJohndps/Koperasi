@@ -1,5 +1,5 @@
 mutation CreateTransaction($input: transactionInput) {
-  test(input: $input) {
+  createTransaction(input: $input) {
     ok
     transaction {
       id
@@ -7,7 +7,8 @@ mutation CreateTransaction($input: transactionInput) {
         id
         name
       }
-      price
+      basePrice
+      profit
       qty
       total
       verBy {

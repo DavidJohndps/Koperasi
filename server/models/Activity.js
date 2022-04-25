@@ -6,4 +6,4 @@ const activitySchema = new Schema({
     verBy: String,
 },{timestamps: true})
 
-module.exports = model('Activites', activitySchema)
+module.exports = model('Activities', activitySchema)

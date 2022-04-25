@@ -6,7 +6,8 @@ mutation UpdateProduct($input: productInput) {
       name
       desc
       stock
-      price
+      basePrice
+      profit
     }
   }
 }

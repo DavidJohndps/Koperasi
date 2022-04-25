@@ -1,0 +1,20 @@
+mutation updateCompanyDetail($input: companyDetailInput) {
+  updateCompanyDetail(input: $input) {
+    ok
+    companyDetail {
+      id
+      name
+      npwp
+      balance
+      revenue
+      netProfit
+      asset {
+        id
+        assetCode
+        boughtPrice
+        boughtSince
+        desc
+      }
+    }
+  }
+}

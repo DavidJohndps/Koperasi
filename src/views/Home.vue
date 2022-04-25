@@ -4,12 +4,12 @@
       <!-- Recent Transactions -->
       <v-col cols="3">
         <Transaction
-          v-show="Transactions.length > 0"
-          v-for="transaction in Transactions"
+          v-show="RecentTransactions.length > 0"
+          v-for="transaction in RecentTransactions"
           :transaction="transaction"
           :key="transaction.id"
         />
-        <p v-show="Transactions.length == 0">No Recent Transactions</p>
+        <p v-show="RecentTransactions.length == 0">No Recent Transactions</p>
       </v-col>
       <!-- Product Shortage -->
       <v-col cols="5">
@@ -18,11 +18,17 @@
           v-for="product in ProductShortage"
           :product="product"
           :key="product.id"
+          @updatedProduct="getRecentActivity"
         />
         <p v-show="ProductShortage.length == 0">No Product Shortage</p>
       </v-col>
       <v-col cols="4">
-        <Activity v-for="activity in Activities" :key="activity.id" :activity="activity"/>
+        <Activity
+          v-for="activity in RecentActivities"
+          :key="activity.id"
+          :activity="activity"
+        />
+        <p v-show="RecentActivities.length == 0">No Recent Activities</p>
       </v-col>
     </v-row>
     <SearchDialog />
@@ -53,39 +59,26 @@ export default {
     try {
       await this.getRecentTransactions();
       await this.getProductShortage();
-      await this.getActivity();
+      await this.getRecentActivity();
     } catch (err) {
       console.log(err);
     }
   },
 
   computed: {
-    // isEmpty() {
-    //   return (product) => {
-    //     const index = this.ShopCart.findIndex(
-    //       (item) => item.product.id == product.id
-    //     );
-    //     if (index != -1) {
-    //       const totalQty = product.qty + this.ShopCart[index].qty;
-    //       if (totalQty >= product.stock) return true;
-    //       else return false;
-    //     } else {
-    //       if (product.qty >= product.stock) return true;
-    //       else return false;
-    //     }
-    //   };
-    // },
     ShopCart() {
       return this.$store.getters.getShopCart;
     },
-    Transactions() {
-      return this.$store.getters.getTransactions;
+    RecentTransactions() {
+      return this.$store.getters.getRecentTransactions;
     },
-    Activities() {
-      return this.$store.getters.getActivities;
+    RecentActivities() {
+      return this.$store.getters.getRecentActivities;
     },
     ProductShortage() {
-      return this.$store.getters.getProducts.filter(product => product.stock <= 10)
+      return this.$store.getters.getProducts.filter(
+        (product) => product.stock <= 10
+      );
     },
   },
   data() {
@@ -102,8 +95,10 @@ export default {
         });
         const docs = result.data.Transactions;
         const { ok, transaction, error } = docs;
-        if (ok) this.$store.commit("addTransaction", transaction);
-        else alert(error);
+        if (ok) {
+          this.$store.commit("addRecentTransaction", transaction);
+          this.$store.commit("addTransaction", transaction);
+        } else alert(error);
       } catch (err) {
         console.log(err);
       }
@@ -112,7 +107,7 @@ export default {
       try {
         const result = await this.$apollo.mutate({
           mutation: GET_PRODUCT_SHORTAGE,
-          variables: { stock: 10 },
+          variables: { stock: 10, sort: "asc" },
         });
         const docs = result.data.Products;
         const { ok, product, error } = docs;
@@ -122,18 +117,24 @@ export default {
         console.log(err);
       }
     },
-    async getActivity() {
+    async getRecentActivity() {
       try {
-        const result = await this.$apollo.mutate({mutation: GET_ACTIVITY, variables: {
-          isRecent: true,
-          sort: 'desc'
-        }})
-        const {ok, activity, error} = result.data.Activities
-        ok ? this.$store.commit('addActivity', activity) : alert(error)
+        const result = await this.$apollo.mutate({
+          mutation: GET_ACTIVITY,
+          variables: {
+            isRecent: true,
+            sort: "desc",
+          },
+        });
+        const { ok, activity, error } = result.data.Activities;
+        if (ok) {
+          this.$store.commit("addRecentActivity", activity);
+          this.$store.commit("addActivity", activity);
+        } else alert(error);
       } catch (err) {
-        console.log(err)
+        console.log(err);
       }
-    }
+    },
   },
 };
 </script>

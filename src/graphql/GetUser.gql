@@ -5,7 +5,9 @@ query GetUsers {
       id
       email
       username
+      npwp
       position
+      address
     }
   }
 }

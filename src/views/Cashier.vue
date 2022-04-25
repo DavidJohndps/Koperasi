@@ -41,7 +41,10 @@
         </v-tooltip>
       </template>
       <template v-slot:[`item.total`]="{ item }">
-        {{ item.qty * item.product.price }}
+        {{
+          item.qty *
+          Price(item.product.basePrice, item.product.profit)
+        }}
       </template>
       <template v-slot:[`item.actions`]="{ item }">
         <v-icon small @click="removeCartItem(item)"> mdi-delete </v-icon>
@@ -65,11 +68,18 @@
               <v-list-item-title
                 ><span
                   >{{ item.qty }} x {{ item.product.name }}
-                  <v-spacer></v-spacer> {{ item.qty * item.product.price }}
+                  <v-spacer></v-spacer>
+                  {{
+                    item.qty *
+                    Price(item.product.basePrice, item.product.profit)
+                  }}
                 </span>
               </v-list-item-title>
               <v-list-item-subtitle
-                >{{ item.product.price }} /Pcs.</v-list-item-subtitle
+                >{{
+                  Price(item.product.basePrice, item.product.profit)
+                }}
+                /Pcs.</v-list-item-subtitle
               >
             </v-list-item-content>
           </v-list-item>
@@ -92,16 +102,21 @@
 </template>
 
 <script>
-// import {uniq} from 'lodash'
+import { round } from "lodash";
+
 import SearchDialog from "../components/SearchDialog.vue";
 
-import GetTransaction from "../graphql/GetTransaction.gql";
-import createTransaction from "../graphql/createTransaction.gql";
+import GET_TRANSACTION from "../graphql/GetTransaction.gql";
+import CREATE_TRANSACTION from "../graphql/createTransaction.gql";
 export default {
   components: {
     SearchDialog,
   },
   computed: {
+    CompanyDetail() {
+      const {id} = this.$store.getters.getCompanyDetails
+      return id
+    },
     ShopCart() {
       return this.$store.getters.getShopCart;
     },
@@ -122,9 +137,17 @@ export default {
     Total() {
       const items = this.ShopCart;
       let total = 0;
-      items.forEach((item) => (total += item.product.price * item.qty));
+      items.forEach(
+        (item) =>
+          (total +=
+            this.Price(item.product.basePrice, item.product.profit) *
+            item.qty)
+      );
       return total;
     },
+    Price () {
+      return (basePrice, profit) => round (basePrice * (parseFloat(profit + 100) / 100), 2)
+    }
   },
   data() {
     return {
@@ -162,7 +185,8 @@ export default {
       dialog: false,
       input: {
         product: [],
-        price: [],
+        basePrice: [],
+        profit: [],
         qty: [],
       },
     };
@@ -175,28 +199,32 @@ export default {
       try {
         let products = [],
           qtys = [],
-          prices = [];
+          basePrices = [],
+          profits = [];
         this.ShopCart.forEach((cart) => {
           const { product: item, qty } = cart;
-          const { id, price } = item;
+          const { id, basePrice, profit } = item;
           products.push(id);
-          prices.push(price);
+          basePrices.push(basePrice);
+          profits.push(parseInt(profit));
           qtys.push(parseInt(qty));
         });
         const { id } = this.$store.getters.getCredentials;
         const result = await this.$apollo.mutate({
-          mutation: createTransaction,
+          mutation: CREATE_TRANSACTION,
           variables: {
             input: {
+              companyDetailId: this.CompanyDetail,
               product: products,
-              price: prices,
+              basePrice: basePrices,
+              profit: profits,
               qty: qtys,
               total: this.Total,
               verBy: id,
             },
           },
         });
-        await result.data.test;
+        await result.data.createTransaction;
         await this.getTransaction();
         this.$store.commit("emptyCartItem");
         this.dialog = !this.dialog;
@@ -206,7 +234,7 @@ export default {
     },
     async getTransaction() {
       try {
-        const result = await this.$apollo.mutate({ mutation: GetTransaction });
+        const result = await this.$apollo.mutate({ mutation: GET_TRANSACTION });
         const { ok, transaction, error } = await result.data.Transactions;
         if (!ok) alert(error);
         else this.$store.commit("addTransaction", transaction);
@@ -217,9 +245,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-/* .width-200 {
-  width: 250px;
-} */
-</style>

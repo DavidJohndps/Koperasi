@@ -1,0 +1,21 @@
+query GetCompanyDetails {
+  CompanyDetails {
+    ok
+    companyDetail {
+      id
+      name
+      npwp
+      balance
+      revenue
+      netProfit
+      asset {
+        id
+        name
+        assetCode
+        boughtSince
+        boughtPrice
+        desc
+      }
+    }
+  }
+}

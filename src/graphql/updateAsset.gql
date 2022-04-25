@@ -1,0 +1,13 @@
+mutation updateAsset($input: assetInput) {
+  updateAsset(input: $input) {
+    ok
+    asset {
+      id
+      name
+      assetCode
+      boughtPrice
+      boughtSince
+      desc
+    }
+  }
+}

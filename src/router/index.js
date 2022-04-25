@@ -13,6 +13,17 @@ const routes = [
     component: Home,
     meta: {
       requiresAuth: true,
+      staffOnly: true
+    },
+  },
+  {
+    path: "/companyDetails",
+    name: "Company Profile",
+    icon: "mdi-office-building-cog-outline",
+    component: () => import('../views/CompanyDetails.vue'),
+    meta: {
+      requiresAuth: true,
+      staffOnly: true
     },
   },
   // {
@@ -34,6 +45,7 @@ const routes = [
     component: () => import('../views/Activities.vue'),
     meta: {
       requiresAuth: true,
+      staffOnly: true
     },
   },
   {
@@ -43,6 +55,7 @@ const routes = [
     component: () => import("../views/Transactions.vue"),
     meta: {
       requiresAuth: true,
+      staffOnly: true
     },
   },
   {
@@ -52,6 +65,7 @@ const routes = [
     component: () => import("../views/Products.vue"),
     meta: {
       requiresAuth: true,
+      staffOnly: true
     },
   },
   {
@@ -61,6 +75,7 @@ const routes = [
     component: () => import("../views/Cashier.vue"),
     meta: {
       requiresAuth: true,
+      staffOnly: true
     },
   },
   {
@@ -82,8 +97,10 @@ const router = new VueRouter({
 router.beforeResolve((to, from, next) => {
   const credential = store.getters.getCredentials;
   const isAuthenticated = !!credential.id;
+  const isStaff = credential.position == 'ADMIN' || credential.position == 'Staff' ? true : false;
   store.commit("updateRoute", to.name);
   if (to.meta.requiresAuth && !isAuthenticated) next("Login");
+  if (to.meta.requiresAuth && to.meta.staffOnly && !isStaff) next("Login")
   else next();
   //   return {
   //     name: "Login",

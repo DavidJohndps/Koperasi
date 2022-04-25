@@ -1,12 +1,13 @@
-query GetProductShortage($stock: Int) {
-  Products(stock: $stock) {
+query GetProductShortage($stock: Int, $sort: SORTING) {
+  Products(stock: $stock, sort: $sort) {
     ok
     product {
       id
       name
       desc
       stock
-      price
+      basePrice
+      profit
       createdAt
       updatedAt
     }

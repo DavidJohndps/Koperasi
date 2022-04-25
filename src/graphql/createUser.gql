@@ -5,7 +5,9 @@ mutation createUser($input: userInput) {
             id
             email
             username
+            npwp
             position
+            address
             accessToken
         }
     }

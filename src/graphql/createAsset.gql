@@ -1,0 +1,13 @@
+mutation createAsset($input: assetInput) {
+  createAsset(input: $input) {
+    ok
+    asset {
+      id
+      name
+      assetCode
+      boughtPrice
+      boughtSince
+      desc
+    }
+  }
+}

@@ -3,7 +3,7 @@ const { GraphQLScalarType, Kind, formatError } = require("graphql");
 const { GraphQLUpload } = require("graphql-upload");
 const { sign } = require("jsonwebtoken");
 const Crypto = require("crypto-js");
-const { flatten, split, isEmpty, isArray } = require("lodash");
+const { flatten, isEmpty, round } = require("lodash");
 require("dotenv").config();
 
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -14,6 +14,7 @@ const User = require("./models/User");
 const Product = require("./models/Product");
 const Transaction = require("./models/Transaction");
 const Activity = require("./models/Activity");
+const CompanyDetail = require("./models/CompanyDetail");
 
 checkEmail = async (email) => {
   try {
@@ -78,27 +79,47 @@ createActivity = async (
         ? `New ${afterDetails.name || "Transaction"} (${
             modelName || "Transactions"
           })`
-        : `Deleted ${beforeDetails.name} (${modelName})`
+        : `Deleted ${beforeDetails.name} ${modelName ? modelName : Unknown}`
     }`;
-    let desc = `${
+
+    const changes = (before) => {
+      const entries = Object.entries(before);
+      const result = entries.filter(
+        ([key, values]) => values != afterDetails[key]
+      );
+      const obj = Object.fromEntries(result);
+      return Object.keys(obj).map(
+        (key) => `"${key}": "${before[key]} to ${afterDetails[key]}"`
+      );
+    };
+
+    const desc = `${
       !isEmpty(beforeDetails) && !isEmpty(afterDetails)
-        ? `Before: ${Object.keys(beforeDetails).map((key) => {
-            return `"${key}": ${JSON.stringify(beforeDetails[key])}`;
-          })} | After: ${Object.keys(afterDetails).map((key) => {
-            return `"${key}": ${JSON.stringify(afterDetails[key])}`;
-          })}`
+        ? `Changes: ${changes(beforeDetails)}`
         : isEmpty(beforeDetails) && !isEmpty(afterDetails)
-        ? `Before: null | After: ${Object.keys(afterDetails).map((key) => {
-            if (isArray(afterDetails[key])) {
-              return `"${key}": ${JSON.stringify(afterDetails[key])}`;
-            } else return `"${key}": ${JSON.stringify(afterDetails[key])}`
-          })}`
-        : `Before: ${Object.keys(afterDetails).map((key) => {
-            return `"${key}": ${JSON.stringify(afterDetails[key])}`;
-          })} | After: null`
+        ? `Added: ${Object.keys(afterDetails).map(
+            (key) => `"${key}": ${JSON.stringify(afterDetails[key])}`
+          )}`
+        : `Deleted`
     }`;
+    // let desc = `${
+    //   !isEmpty(beforeDetails) && !isEmpty(afterDetails)
+    //     ? `Changes: ${beforeDetailsEntries.filter(([key, values]) => {
+    //         if (beforeDetails[key] != afterDetails[key])
+    //           return `"${key}: ${values} to ${afterDetails[key]}"`;
+    //       })}`
+    //     : isEmpty(beforeDetails) && !isEmpty(afterDetails)
+    //     ? `Added: ${afterDetailsEntries.filter(([key, values]) => {
+    //         if (isArray(values)) {
+    //           return `"${key}": ${JSON.stringify(values)}`;
+    //         } else return `"${key}": ${JSON.stringify(values)}`;
+    //       })}`
+    //     : `Deleted: ${afterDetailsEntries.filter(([key, values]) => {
+    //         return `"${key}": ${JSON.stringify(values)}`;
+    //       })}`
+    // }`;
     const result = await Activity.create([{ name, desc, verBy: userId }], {
-      session: session,
+      session: session || null,
     });
     return result;
   } catch (err) {
@@ -108,6 +129,46 @@ createActivity = async (
 
 const resolvers = {
   Upload: GraphQLUpload,
+
+  ASSETCODE: {
+    Tabungan: "12",
+    Giro: "13",
+    Deposito: "14",
+    SetaraKasLainnya: "19",
+    Piutang: "21",
+    PiutangAffiliasi: "22",
+    PiutangLain: "29",
+    SahamTetap: "31",
+    Saham: "32",
+    ObligasiPerusahaan: "33",
+    ObligasiPemerintah: "34",
+    SuratUtangLain: "35",
+    Reksadana: "36",
+    Kontrak: "37",
+    ModalLain: "38",
+    Investasi: "39",
+    Sepeda: "41",
+    SepedaMotor: "42",
+    Mobil: "43",
+    AlatTransportasiLain: "49",
+    LogamMulia: "51",
+    BatuMulia: "52",
+    BarangSeniAtauAntik: "53",
+    KapalPesiarPesawatHelikopter: "54",
+    PeraltanElektronikDanFurnitur: "55",
+    HartaBergerakLainnya: "59",
+    TanahatauBangunanTempatTinggal: "61",
+    TanahatauBangunanUsaha: "62",
+    TanahUntukLahanUsaha: "63",
+    HartaTidakBergerakLainnya: "69",
+  },
+
+  // CompanyDetail: {
+  //   asset: async ({ asset }, arg, { assetLoader }) => {
+  //     const result = await assetLoader.loadMany(asset);
+  //     return flatten(result);
+  //   },
+  // },
 
   Transaction: {
     product: async ({ product }, arg, { productLoader }) => {
@@ -127,6 +188,21 @@ const resolvers = {
     },
   },
   Query: {
+    CompanyDetails: async (parent, params, args) => {
+      const { req } = args;
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+        const [doc] = await CompanyDetail.find();
+
+        return {
+          ok: true,
+          companyDetail: doc,
+        };
+      } catch (err) {
+        console.log(err);
+      }
+    },
     Users: async (parent, params, { req }) => {
       try {
         if (!req.userId)
@@ -164,7 +240,7 @@ const resolvers = {
         console.log(err);
       }
     },
-    Transactions: async (parent, { isRecent, sort }, { req }) => {
+    Transactions: async (parent, { isRecent, sort = "desc" }, { req }) => {
       try {
         if (!req.userId)
           throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
@@ -174,26 +250,26 @@ const resolvers = {
           month = d.getUTCMonth(),
           year = d.getUTCFullYear();
 
-        const isoDate = new Date(year, month, day);
+        const date = new Date(year, month, day);
 
-        const result =
-          isRecent && sort
-            ? await Transaction.where("createdAt")
-                .gte(isoDate)
-                .sort({ createdAt: sort })
-            : sort
-            ? await Transaction.find().sort({ createdAt: sort })
-            : await Transaction.find();
+        if (!isRecent)
+          return {
+            ok: true,
+            transaction: await Transaction.find().sort({ createdAt: sort }),
+          };
 
-        return {
-          ok: true,
-          transaction: result,
-        };
+        if (isRecent)
+          return {
+            ok: true,
+            transaction: await Transaction.where("createdAt")
+              .gte(date)
+              .lte(new Date().setDate(date.getDate() + 1))
+              .sort({ createdAt: sort }),
+          };
       } catch (err) {
         console.log(err);
       }
     },
-
     Activities: async (parent, { isRecent, sort }, { req }) => {
       try {
         if (!req.userId)
@@ -204,11 +280,12 @@ const resolvers = {
           month = d.getUTCMonth(),
           year = d.getUTCFullYear();
 
-        const isoDate = new Date(year, month, day);
+        const date = new Date(year, month, day);
         const doc =
           isRecent && sort
             ? await Activity.where("createdAt")
-                .gte(isoDate)
+                .gte(date)
+                .lte(new Date().setDate(date.getDate() + 1))
                 .sort({ createdAt: sort })
             : sort
             ? await Activity.find().sort({ createdAt: sort })
@@ -224,34 +301,6 @@ const resolvers = {
     },
   },
   Mutation: {
-    async test(parent, { input }, { req, db }) {
-      const session = await db.startSession();
-      session.startTransaction();
-      try {
-        const { product, qty } = input;
-        const [doc] = await Transaction.create([{ ...input }], {
-          session: session,
-        });
-        product.forEach(async (id, index) => {
-          await Product.findOneAndUpdate(
-            { id: id },
-            { $inc: { stock: -qty[index] } },
-            { new: true, session }
-          );
-        });
-        activityResult = await createActivity(null, doc, req.userId, session);
-        await session.commitTransaction();
-        console.log("Transaction completed");
-        await session.endSession();
-        return {
-          ok: true,
-          transaction: null,
-        };
-      } catch (err) {
-        console.log(`all changes were rolled back, ${err}`);
-        session.abortTransaction();
-      }
-    },
     async singleUpload(parent, { input }, { req }) {
       try {
         console.log("Single Upload Hit");
@@ -304,14 +353,10 @@ const resolvers = {
       try {
         // if (!req.userId)
         //   throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
-        const { username, email, password, position } = input;
+        let { password } = input;
+        password = Crypto.AES.encrypt(password, SECRET_KEY).toString();
 
-        const doc = await User.create({
-          username: username,
-          email: email,
-          password: Crypto.AES.encrypt(password, SECRET_KEY).toString(),
-          position: position,
-        });
+        const doc = await User.create({ ...input, password });
 
         return {
           ok: true,
@@ -343,34 +388,56 @@ const resolvers = {
         console.log(err);
       }
     },
-    async createProduct(parent, { input }, { req }) {
+    async createProduct(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
       try {
         if (!req.userId)
           throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
 
-        const { id, ...productInput } = input;
+        const { companyDetailId, id, ...productInput } = input;
+
+        const { basePrice, qty } = productInput;
 
         // const doc = await Product.create({ ...productInput });
-        const doc = new Product({ ...productInput });
-        await createActivity(null, doc, req.userId);
-        const result = await doc.save();
+        const doc = await Product.create([{ ...productInput }], {
+          session: session,
+        });
+        await CompanyDetail.findByIdAndUpdate(
+          { id: companyDetailId },
+          {
+            $inc: {
+              balance: -round(basePrice * parseFloat(qty), 2),
+            },
+          },
+          { session: session }
+        );
+        await createActivity(null, doc, req.userId, session);
+
+        await session.commitTransaction();
+        await session.endSession();
 
         return {
           ok: true,
           product: [result],
         };
       } catch (err) {
-        console.log(err);
+        console.log(`all changes were rolled back, ${err}`);
+        session.abortTransaction();
       }
     },
-    async updateProduct(parent, { input }, { req }) {
+    async updateProduct(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
       try {
         if (!req.userId)
           throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
 
-        const { id, ...productInput } = input;
+        const { companyDetailId, id, ...productInput } = input;
 
-        const doc = await Product.findById(id);
+        const { basePrice, qty } = productInput;
+
+        const doc = await Product.findById(id).session(session);
 
         const before = JSON.parse(JSON.stringify(doc));
 
@@ -378,16 +445,28 @@ const resolvers = {
           doc[key] = productInput[key];
         });
 
-        await createActivity(before, doc, req.userId);
+        await createActivity(before, doc, req.userId, session);
+        await CompanyDetail.findByIdAndUpdate(
+          { id: companyDetailId },
+          {
+            $inc: {
+              balance: -round(basePrice * parseFloat(qty), 2),
+            },
+          }
+        );
 
         const result = await doc.save();
+
+        await session.commitTransaction();
+        await session.endSession();
 
         return {
           ok: true,
           product: [result],
         };
       } catch (err) {
-        console.log(err);
+        console.log(`all changes were rolled back, ${err}`);
+        session.abortTransaction();
       }
     },
     async deleteProduct(parent, { id }, { req }) {
@@ -409,26 +488,170 @@ const resolvers = {
         console.log(err);
       }
     },
-    async createTransaction(parent, { input }, { req }) {
+    async createTransaction(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
+      try {
+        const { companyDetailId, ...transactionInput } = input;
+        const { product, qty, basePrice, profit, total } = transactionInput;
+        const doc = await Transaction.create([{ ...input }], {
+          session: session,
+        });
+        let productOps = [];
+        let netProfit = 0;
+        product.forEach((id, index) => {
+          productOps.push({
+            updateOne: {
+              filter: { _id: id },
+              update: { $inc: { stock: -qty[index] } },
+              upsert: true,
+            },
+          });
+          netProfit += round(
+            basePrice[index] *
+              (parseFloat(profit[index]) / 100) *
+              parseFloat(qty[index]),
+            2
+          );
+        });
+        await CompanyDetail.findByIdAndUpdate(
+          companyDetailId,
+          {
+            $inc: {
+              balance: total,
+              revenue: total,
+              netProfit: netProfit,
+            },
+          },
+          { session: session }
+        );
+
+        await Product.bulkWrite(productOps, { session: session });
+
+        await session.commitTransaction();
+        await session.endSession();
+        console.log("Transaction completed");
+        return {
+          ok: true,
+          transaction: doc,
+        };
+      } catch (err) {
+        console.log(`all changes were rolled back, ${err}`);
+        session.abortTransaction();
+      }
+    },
+    async createAsset(parent, { input }, { req }) {
       try {
         if (!req.userId)
           throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
 
-        const { product, qty } = input;
-        const doc = new Transaction({ ...input });
-        product.forEach(async (productId, idx) => {
-          const product = await Product.findById(productId);
-          product.stock -= qty[idx];
-          await product.save();
+        // const doc = await Asset.create({ ...input });
+
+        const [doc] = await CompanyDetail.find();
+
+        const before = JSON.parse(JSON.stringify(doc));
+
+        doc.asset.push({ ...input });
+
+        console.log(doc.asset);
+
+        // const result = await doc.save();
+
+        // const after = JSON.parse(JSON.stringify(result));
+
+        // await createActivity(before, after, req.userId);
+
+        // return {
+        //   ok: true,
+        //   asset: result.asset,
+        // };
+      } catch (err) {
+        console.log(err);
+      }
+    },
+    async updateAsset(parent, { input }, { req }) {
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const { id, ...assetInput } = input;
+        const [companyDetail] = await CompanyDetail.find();
+        const doc = companyDetail.asset.id(id);
+
+        const before = JSON.parse(JSON.stringify(companyDetail));
+
+        Object.keys(assetInput).map((key) => {
+          doc[key] = assetInput[key];
         });
 
-        await createActivity(null, doc, req.userId);
+        const result = await companyDetail.save();
+        const after = JSON.parse(JSON.stringify(result));
+        await createActivity(before, after, req.userId);
 
-        const result = await doc.save();
+        console.log(result.asset.id(id));
 
         return {
           ok: true,
-          transaction: [result],
+          asset: result.asset.id(id),
+        };
+      } catch (err) {
+        console.log(err);
+      }
+    },
+    async deleteAsset(parent, { id }, { req }) {
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const doc = await Asset.findByIdAndDelete(id);
+
+        const before = JSON.parse(JSON.stringify(doc));
+
+        await createActivity(before, null, req.userId);
+
+        return {
+          ok: true,
+          asset: [doc],
+        };
+      } catch (err) {
+        console.log(err);
+      }
+    },
+    async updateCompanyDetail(parent, { input }, { req, db }) {
+      try {
+        if (!req.userId) {
+          session.abortTransaction();
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+        }
+
+        const { id, ...detail } = input;
+
+        if (!id) {
+          const doc = await CompanyDetail.create({ ...detail });
+
+          const after = JSON.parse(JSON.stringify(doc));
+          await createActivity(null, after, req.userId);
+          console.log("Company Detail Updated");
+
+          return {
+            ok: true,
+            companyDetail: doc,
+          };
+        }
+        const doc = await CompanyDetail.findById(id);
+        const before = JSON.parse(JSON.stringify(doc));
+        Object.keys(detail).map((key) => {
+          if (key == "balance") doc[key] += parseFloat(detail[key]);
+          doc[key] = detail[key];
+        });
+
+        const result = await doc.save();
+        const after = JSON.parse(JSON.stringify(result));
+        await createActivity(before, after, req.userId);
+
+        return {
+          ok: true,
+          companyDetail: result,
         };
       } catch (err) {
         console.log(err);

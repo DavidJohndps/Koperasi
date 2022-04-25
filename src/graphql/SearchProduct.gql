@@ -6,7 +6,8 @@ query ProductShortage($input: String) {
       name
       desc
       stock
-      price
+      basePrice
+      profit
     }
   }
 }

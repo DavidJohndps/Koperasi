@@ -4,7 +4,8 @@ const productSchema = new Schema({
     name: String,
     desc: String,
     stock: Number,
-    price: Number
+    basePrice: Number,
+    profit: Number
 },{timestamps: true})
 
 module.exports = model('Products', productSchema)

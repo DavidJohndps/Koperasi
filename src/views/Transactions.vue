@@ -14,7 +14,7 @@
 
 <script>
 import store from '../store'
-import GetTransaction from "../graphql/GetTransaction.gql";
+import GET_TRANSACTIONS from "../graphql/GetTransaction.gql";
 
 import Transaction from "../components/Transaction.vue";
 
@@ -29,7 +29,7 @@ export default {
   },
   apollo: {
     transactions: {
-      query: GetTransaction,
+      query: GET_TRANSACTIONS,
       update: (data) => data.Transactions.transaction,
       result: ({data}) => store.commit('addTransaction', data.Transactions.transaction)
     },

@@ -6,12 +6,23 @@ Vue.use(Vuex);
 export default new Vuex.Store({
   state: {
     currentRoute: null,
+    companyDetail: {
+      id: null,
+      name: null,
+      npwp: null,
+      balance: null,
+      revenue: null,
+      netProfit: null,
+      asset: [],
+    },
     credential: {
       id: null,
       username: null,
       position: null,
       accessToken: null,
     },
+    recentActivities: [],
+    recentTransactions: [],
     activites: [],
     products: [],
     transactions: [],
@@ -22,17 +33,25 @@ export default new Vuex.Store({
     getCurrentRoute: (state) => state.currentRoute,
     getAccessToken: (state) => state.credential.accessToken,
     getCredentials: (state) => state.credential,
+    getCompanyDetails: (state) => state.companyDetail,
     getShopCart: (state) => state.shopCart,
     getUsers: (state) => state.users,
     getProducts: (state) => state.products,
     getTransactions: (state) => state.transactions,
     getActivities: (state) => state.activites,
+    getRecentActivities: (state) => state.recentActivities,
+    getRecentTransactions: (state) => state.recentTransactions,
   },
   mutations: {
     updateRoute: (state, payload) => (state.currentRoute = payload),
     updateCredential: (state, payload) => {
       Object.keys(payload).map((key) => {
         state.credential[key] = payload[key];
+      });
+    },
+    updateCompanyDetails: (state, payload) => {
+      Object.keys(payload).map((key) => {
+        state.companyDetail[key] = payload[key];
       });
     },
     removeCredential: (state) => {
@@ -81,6 +100,9 @@ export default new Vuex.Store({
         );
       }
     },
+    deleteProduct: (state, payload) => {
+      state.products = state.products.filter(product => product.id != payload.id)
+    },
     addTransaction: (state, payload) => {
       payload.forEach((item) => {
         const isExist = state.transactions.findIndex(
@@ -95,6 +117,22 @@ export default new Vuex.Store({
           (activity) => activity.id == event.id
         );
         if (isExist == -1) state.activites.push(event);
+      });
+    },
+    addRecentActivity: (state, payload) => {
+      payload.forEach((event) => {
+        const isExist = state.recentActivities.findIndex(
+          (activity) => activity.id == event.id
+        );
+        if (isExist == -1) state.recentActivities.push(event);
+      });
+    },
+    addRecentTransaction: (state, payload) => {
+      payload.forEach((event) => {
+        const isExist = state.recentTransactions.findIndex(
+          (transaction) => transaction.id == event.id
+        );
+        if (isExist == -1) state.recentTransactions.push(event);
       });
     },
   },

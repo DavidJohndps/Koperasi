@@ -21,6 +21,11 @@ const dataLoaders = {
     const groupedDocs = groupBy(docs, (doc) => doc.id)
     return map(ids, (id) => groupedDocs[id])
   }),
+  // assetLoader: new DataLoader(async (ids) => {
+  //   const docs = await Asset.find({ _id: { $in: ids } });
+  //   const groupedDocs = groupBy(docs, (doc) => doc.id)
+  //   return map(ids, (id) => groupedDocs[id])
+  // }),
   transactionLoader: new DataLoader(async (ids) => {
     const docs = await Transaction.find({ _id: { $in: ids } });
     const groupedDocs = groupBy(docs, (doc) => doc.id)
