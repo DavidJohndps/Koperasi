@@ -1,13 +1,16 @@
 query GetProduct {
-    Products {
-        ok
-        product {
-            id
-            name
-            desc
-            basePrice
-            profit
-            stock
-        }
+  Products {
+    ok
+    product {
+      id
+      name
+      desc
+      basePrice
+      profit
+      stock
     }
+    error {
+      message
+    }
+  }
 }

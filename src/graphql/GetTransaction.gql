@@ -19,5 +19,8 @@ query GetTransaction {
       }
       createdAt
     }
+    error {
+      message
+    }
   }
 }

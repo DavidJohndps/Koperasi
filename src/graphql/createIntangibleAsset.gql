@@ -1,0 +1,18 @@
+mutation createIntangibleAsset($input: intangibleAssetInput) {
+  createIntangibleAsset(input: $input) {
+    ok
+    intangibleAsset {
+      id
+      name
+      boughtPrice
+      boughtSince
+      depCategory
+      depAmount
+      timePeriod
+      desc
+    }
+    error {
+      message
+    }
+  }
+}

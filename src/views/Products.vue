@@ -29,21 +29,23 @@
         </v-toolbar>
         <v-card-text>
           <v-text-field
-            v-model="product.input.name"
+            v-model.trim="product.input.name"
+            :rules="rules.name"
             label="Name"
             clearable
             solo
             rounded
           ></v-text-field>
           <v-text-field
-            v-model="product.input.desc"
+            v-model.trim="product.input.desc"
             label="Description"
             clearable
             solo
             rounded
           ></v-text-field>
           <v-text-field
-            v-model="product.input.basePrice"
+            v-model.number="product.input.basePrice"
+            :rules="rules.basePrice"
             type="number"
             label="Base Price"
             clearable
@@ -51,7 +53,8 @@
             rounded
           ></v-text-field>
           <v-text-field
-            v-model="product.input.profit"
+            v-model.number="product.input.profit"
+            :rules="rules.profit"
             type="number"
             label="Profit"
             clearable
@@ -59,7 +62,8 @@
             rounded
           ></v-text-field>
           <v-text-field
-            v-model="product.input.stock"
+            v-model.number="product.input.stock"
+            :rules="rules.stock"
             type="number"
             label="Stock"
             clearable
@@ -81,7 +85,17 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="closeDialog">Discard</v-btn>
-          <v-btn text @click="CreateProduct">Save</v-btn>
+          <v-btn
+            text
+            @click="CreateProduct"
+            :disabled="
+              !product.input.name ||
+              !product.input.basePrice ||
+              !product.input.profit ||
+              !product.input.stock
+            "
+            >Save</v-btn
+          >
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -108,8 +122,8 @@ export default {
   },
   computed: {
     Products() {
-      return this.$store.getters.getProducts
-    }
+      return this.$store.getters.getProducts;
+    },
   },
   data() {
     return {
@@ -124,12 +138,18 @@ export default {
         },
         dialog: false,
       },
+      rules: {
+        name: [(v) => !!v || "Name field is required"],
+        basePrice: [(v) => !!v || "Base Price field is required"],
+        profit: [(v) => !!v || "Profit field is required"],
+        stock: [(v) => !!v || "Stock field is required"],
+      },
     };
   },
   apollo: {
     products: {
       query: GET_PRODUCT,
-      update: (data) => data.Products.product,
+      update: ({ Products }) => Products.product,
       result: ({ data }) => {
         store.commit("addProduct", data.Products.product);
       },
@@ -144,12 +164,14 @@ export default {
     //Remember to refractor function, so that this function can be used for create and update product
     async CreateProduct() {
       try {
+        const { id: companyDetailId } = this.$store.getters.getCompanyDetails;
         const { basePrice, profit, stock, ...input } = this.product.input;
         const result = await this.$apollo.mutate({
           mutation: CREATE_PRODUCT,
           variables: {
             input: {
               ...input,
+              companyDetailId,
               basePrice: parseFloat(basePrice),
               profit: parseInt(profit),
               stock: parseInt(stock),
@@ -157,13 +179,13 @@ export default {
           },
         });
         const { ok, product, error } = result.data.createProduct;
-        if (!ok) alert(error);
+        if (!ok) alert(error.message);
         else {
           this.$store.commit("addProduct", product);
           this.product.dialog = !this.product.dialog;
         }
-      } catch (err) {
-        alert(err);
+      } catch ({ message }) {
+        alert(message);
       }
     },
   },

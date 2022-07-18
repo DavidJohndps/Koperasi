@@ -1,7 +1,7 @@
 <template>
   <v-app id="inspire">
     <v-navigation-drawer
-      v-show="isRouteLogin"
+      v-show="useDrawer"
       v-model="drawer"
       class="pt-4"
       color="grey lighten-3"
@@ -62,11 +62,29 @@ export default {
     },
     Routes() {
       let routes = this.$router.options.routes;
-      return routes.filter((route) => route.name !== "Login");
+      const { position } = this.$store.getters.getCredentials;
+      return routes.filter((route) => {
+        if (!position) return;
+        if (position.includes("ADMIN"))
+          if (this.adminOnly.includes(route.name)) return route;
+        if (position.includes("Member")) {
+          if (this.memberOnly.includes(route.name)) return route;
+        }
+        if (position.includes("Staff")) {
+          if (this.staffOnlyRoutes.includes(route.name)) return route;
+        }
+
+        // if (position.includes('Member')) {
+        //   let restrictedRoute = [...this.notImportantRoutes, ...this.staffOnlyRoutes]
+        //   if (restrictedRoute.includes(route.name) == false) return route
+        // }
+        // if (this.notImportantRoutes.includes(route.name) == false) return route;
+      });
     },
-    isRouteLogin() {
+    useDrawer() {
       const currentRoute = this.$store.getters.getCurrentRoute;
-      if (currentRoute == "Login") return false;
+      const notImportant = this.notImportantRoutes;
+      if (notImportant.includes(currentRoute)) return false;
       else return true;
     },
   },
@@ -74,10 +92,31 @@ export default {
   data: () => ({
     //
     drawer: true,
+    notImportantRoutes: [
+      "Login",
+      "Tax List",
+      "Income Statement",
+      "Balance Sheet",
+    ],
+    staffOnlyRoutes: [
+      'Products',
+      'Home',
+      'Activities',
+      'Transactions',
+      'Laporan SPT',
+      'Cashier',
+      "Budgets",
+      "Expenses",
+      "Tax Reports",
+      "Company Profile",
+      "LaporanSPT",
+    ],
+    adminOnly: ["Users"],
+    memberOnly: ['Home', 'Activities','Transactions']
   }),
   methods: {
     logout() {
-      this.$store.commit('removeCredential')
+      this.$store.commit("removeCredential");
       Cookie.remove("accessToken", { path: "/" });
       this.$router.push({ name: "Login" });
     },

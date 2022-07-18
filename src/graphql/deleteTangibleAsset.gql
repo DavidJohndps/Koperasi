@@ -1,0 +1,18 @@
+mutation deleteTangibleAsset($id: String!, $companyDetailId: ID!) {
+  deleteTangibleAsset(id: $id, companyDetailId: $companyDetailId) {
+    ok
+    tangibleAsset {
+      id
+      name
+      boughtPrice
+      boughtSince
+      depCategory
+      depAmount
+      timePeriod
+      desc
+    }
+    error {
+      message
+    }
+  }
+}

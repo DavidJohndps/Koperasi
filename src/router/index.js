@@ -13,6 +13,65 @@ const routes = [
     component: Home,
     meta: {
       requiresAuth: true,
+    },
+  },  
+  {
+    path: "/incomeStatement",
+    name: "Income Statement",
+    props: true,
+    component: () => import('../views/IncomeStatement.vue'),
+    meta: {
+      requiresAuth: true,
+      staffOnly: true
+    },
+  },
+  {
+    path: "/taxPaymentList",
+    name: "Tax List",
+    props: true,
+    component: () => import('../views/TaxList.vue'),
+    meta: {
+      requiresAuth: true,
+      staffOnly: true
+    },
+  },
+  {
+    path: "/balanceSheet",
+    name: "Balance Sheet",
+    props: true,
+    component: () => import('../views/BalanceSheet.vue'),
+    meta: {
+      requiresAuth: true,
+      staffOnly: true
+    },
+  },
+  {
+    path: "/budget",
+    name: "Budgets",
+    icon: "mdi-bank-plus",
+    component: () => import('../views/Budgets.vue'),
+    meta: {
+      requiresAuth: true,
+      staffOnly: true
+    },
+  },
+  {
+    path: "/expense",
+    name: "Expenses",
+    icon: "mdi-bank-minus",
+    component: () => import('../views/Expenses.vue'),
+    meta: {
+      requiresAuth: true,
+      staffOnly: true
+    },
+  },
+  {
+    path: "/taxReports",
+    name: "Tax Reports",
+    icon: "mdi-file-chart",
+    component: () => import('../views/TaxReports.vue'),
+    meta: {
+      requiresAuth: true,
       staffOnly: true
     },
   },
@@ -26,18 +85,15 @@ const routes = [
       staffOnly: true
     },
   },
-  // {
-  //   path: "/transactions",
-  //   name: "Transactions",
-  //   // route level code-splitting
-  //   // this generates a separate chunk (about.[hash].js) for this route
-  //   // which is lazy-loaded when the route is visited.
-  //   component: () =>
-  //     import(/* webpackChunkName: "about" */ "../views/Transactions.vue"),
-  //   meta: {
-  //     requiresAuth: true,
-  //   },
-  // },
+  {
+    path: "/laporanSPT",
+    name: "Laporan SPT",
+    component: () => import('../views/LaporanSPT.vue'),    
+    meta: {
+      requiresAuth: true,
+      staffOnly: true
+    }
+  },
   {
     path: "/activities",
     name: "Activities",
@@ -45,7 +101,6 @@ const routes = [
     component: () => import('../views/Activities.vue'),
     meta: {
       requiresAuth: true,
-      staffOnly: true
     },
   },
   {
@@ -55,7 +110,6 @@ const routes = [
     component: () => import("../views/Transactions.vue"),
     meta: {
       requiresAuth: true,
-      staffOnly: true
     },
   },
   {
@@ -66,6 +120,16 @@ const routes = [
     meta: {
       requiresAuth: true,
       staffOnly: true
+    },
+  },
+  {
+    path: "/users",
+    name: "Users",
+    icon: 'mdi-cash-register',
+    component: () => import("../views/Users.vue"),
+    meta: {
+      requiresAuth: true,
+      adminOnly: true
     },
   },
   {
@@ -82,9 +146,6 @@ const routes = [
     path: "/login",
     name: "Login",
     component: () => import("../views/Login.vue"),
-    meta: {
-      requiresAuth: false,
-    },
   },
 ];
 

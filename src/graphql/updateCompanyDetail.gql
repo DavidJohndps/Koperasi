@@ -8,13 +8,39 @@ mutation updateCompanyDetail($input: companyDetailInput) {
       balance
       revenue
       netProfit
-      asset {
+      tangibleAsset {
         id
-        assetCode
-        boughtPrice
+        name
         boughtSince
+        boughtPrice
+        depCategory
+        depAmount
+        timePeriod
         desc
       }
+      intangibleAsset {
+        id
+        name
+        boughtSince
+        boughtPrice
+        depCategory
+        depAmount
+        timePeriod
+        desc
+      }
+      propertyAsset {
+        id
+        name
+        boughtSince
+        boughtPrice
+        depCategory
+        depAmount
+        timePeriod
+        desc
+      }
+    }
+    error {
+      message
     }
   }
 }

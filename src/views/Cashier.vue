@@ -12,10 +12,11 @@
             <v-text-field
               v-bind="attrs"
               v-on="on"
-              v-model="item.qty"
+              v-model.number="item.qty"
               class="width-200"
               min="1"
               :max="item.product.stock"
+              type="number"
             >
               <v-icon
                 slot="prepend-inner"
@@ -41,10 +42,7 @@
         </v-tooltip>
       </template>
       <template v-slot:[`item.total`]="{ item }">
-        {{
-          item.qty *
-          Price(item.product.basePrice, item.product.profit)
-        }}
+        {{ item.qty * Price(item.product.basePrice, item.product.profit) }}
       </template>
       <template v-slot:[`item.actions`]="{ item }">
         <v-icon small @click="removeCartItem(item)"> mdi-delete </v-icon>
@@ -54,7 +52,13 @@
           <td colspan="3" class="text-right">Total</td>
           <td colspan="1" class="text-right">{{ Total }}</td>
           <td colspan="1">
-            <v-btn outlined text @click="dialog = !dialog">Checkout</v-btn>
+            <v-btn
+              outlined
+              text
+              @click="dialog = !dialog"
+              :disabled="ShopCart.length > 0 ? false : true"
+              >Checkout</v-btn
+            >
           </td>
         </tr>
       </template>
@@ -114,8 +118,8 @@ export default {
   },
   computed: {
     CompanyDetail() {
-      const {id} = this.$store.getters.getCompanyDetails
-      return id
+      const { id } = this.$store.getters.getCompanyDetails;
+      return id;
     },
     ShopCart() {
       return this.$store.getters.getShopCart;
@@ -140,14 +144,14 @@ export default {
       items.forEach(
         (item) =>
           (total +=
-            this.Price(item.product.basePrice, item.product.profit) *
-            item.qty)
+            this.Price(item.product.basePrice, item.product.profit) * item.qty)
       );
       return total;
     },
-    Price () {
-      return (basePrice, profit) => round (basePrice * (parseFloat(profit + 100) / 100), 2)
-    }
+    Price() {
+      return (basePrice, profit) =>
+        round(basePrice * (parseFloat(profit + 100) / 100), 2);
+    },
   },
   data() {
     return {
@@ -224,22 +228,25 @@ export default {
             },
           },
         });
-        await result.data.createTransaction;
-        await this.getTransaction();
-        this.$store.commit("emptyCartItem");
-        this.dialog = !this.dialog;
-      } catch (err) {
-        console.log(err);
+        const { ok, error } = await result.data.createTransaction;
+        if (!ok) alert(error.message);
+        else {
+          await this.getTransaction();
+          this.$store.commit("emptyCartItem");
+          this.dialog = !this.dialog;
+        }
+      } catch ({ message }) {
+        alert(message);
       }
     },
     async getTransaction() {
       try {
         const result = await this.$apollo.mutate({ mutation: GET_TRANSACTION });
         const { ok, transaction, error } = await result.data.Transactions;
-        if (!ok) alert(error);
+        if (!ok) alert(error.message);
         else this.$store.commit("addTransaction", transaction);
-      } catch (err) {
-        console.log(err);
+      } catch ({ message }) {
+        alert(message);
       }
     },
   },

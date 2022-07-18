@@ -1,0 +1,18 @@
+mutation updateUser($input: userInput) {
+  updateUser(input: $input) {
+    ok
+    user {
+      id
+      email
+      username
+      npwp
+      position
+      address
+      phoneNumber
+      accessToken
+    }
+    error {
+      message
+    }
+  }
+}

@@ -1,0 +1,24 @@
+mutation UpdateBudget($input: budgetInput) {
+  updateBudget(input: $input) {
+    ok
+    budget {
+      id
+      user {
+        id
+        username
+        npwp
+        position
+        address
+        phoneNumber
+      }
+      amount
+      verBy {
+        id
+        username
+      }
+    }
+    error {
+      message
+    }
+  }
+}

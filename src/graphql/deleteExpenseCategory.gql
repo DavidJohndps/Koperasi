@@ -1,0 +1,12 @@
+mutation deleteExpenseCategory($id: String) {
+  updateExpenseCategory(id: $id) {
+    ok
+    expCategory {
+      id
+      name
+    }
+    error {
+      message
+    }
+  }
+}

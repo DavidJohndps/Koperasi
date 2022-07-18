@@ -12,5 +12,8 @@ query GetActivity($isRecent: Boolean, $sort: SORTING) {
       }
       createdAt
     }
+    error {
+      message
+    }
   }
 }

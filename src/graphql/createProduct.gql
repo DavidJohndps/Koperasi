@@ -1,15 +1,18 @@
 mutation CreateProduct($input: productInput) {
-    createProduct(input: $input) {
-        ok
-        product {
-            id
-            name
-            desc
-            basePrice
-            profit
-            stock
-            createdAt
-            updatedAt
-        }
+  createProduct(input: $input) {
+    ok
+    product {
+      id
+      name
+      desc
+      basePrice
+      profit
+      stock
+      createdAt
+      updatedAt
     }
+    error {
+      message
+    }
+  }
 }

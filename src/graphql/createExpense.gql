@@ -1,0 +1,22 @@
+mutation CreateExpense($input: expenseInput) {
+    createExpense(input: $input) {
+        ok
+        expense {
+            id
+            name
+            expCategory {
+                id
+                name
+            }
+            amount
+            verBy {
+                id
+                username
+            }
+            createdAt
+        }
+        error {
+            message
+        }
+    }
+}

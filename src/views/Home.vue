@@ -36,6 +36,8 @@
 </template>
 
 <script>
+import GET_COMPANY_DETAIL from "../graphql/GetCompanyDetails.gql";
+import GET_TRANSACTION from "../graphql/GetTransaction.gql";
 import GET_RECENT_TRANSACTION from "../graphql/GetRecentTransactions.gql";
 import GET_PRODUCT_SHORTAGE from "../graphql/GetProductShortage.gql";
 import GET_ACTIVITY from "../graphql/GetActivity.gql";
@@ -57,6 +59,8 @@ export default {
 
   async mounted() {
     try {
+      await this.GetCompanyDetails()
+      await this.getTransaction();
       await this.getRecentTransactions();
       await this.getProductShortage();
       await this.getRecentActivity();
@@ -87,6 +91,21 @@ export default {
     };
   },
   methods: {
+    async getTransaction() {
+      try {
+        const result = await this.$apollo.mutate({
+          mutation: GET_TRANSACTION,
+          variables: { sort: 'desc' },
+        });
+        const docs = result.data.Transactions;
+        const { ok, transaction, error } = docs;
+        if (ok) {
+          this.$store.commit("addTransaction", transaction);
+        } else alert(error);
+      } catch (err) {
+        console.log(err);
+      }
+    },
     async getRecentTransactions() {
       try {
         const result = await this.$apollo.mutate({
@@ -131,6 +150,18 @@ export default {
           this.$store.commit("addRecentActivity", activity);
           this.$store.commit("addActivity", activity);
         } else alert(error);
+      } catch (err) {
+        console.log(err);
+      }
+    },
+    async GetCompanyDetails() {
+      try {
+        const result = await this.$apollo.mutate({
+          mutation: GET_COMPANY_DETAIL,
+        });
+        const { ok, companyDetail, error } = result.data.CompanyDetails;
+        if (!ok) alert(error);
+        this.$store.commit("updateCompanyDetails", companyDetail);
       } catch (err) {
         console.log(err);
       }

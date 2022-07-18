@@ -1,10 +1,13 @@
-mutation DeleteProduct($id: String!) {
-  deleteProduct(id: $id) {
+mutation DeleteProduct($id: String!, $companyDetailId: ID!) {
+  deleteProduct(id: $id, companyDetailId: $companyDetailId) {
     ok
     product {
       id
       name
       desc
+    }
+    error {
+      message
     }
   }
 }

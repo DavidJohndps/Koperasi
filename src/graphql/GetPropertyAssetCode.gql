@@ -1,0 +1,7 @@
+query GetTangibleAssetCode{
+  __type(name: "PROPERTYASSET") {
+    enumValues {
+      name
+    }
+  }
+}

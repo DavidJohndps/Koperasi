@@ -1,0 +1,21 @@
+mutation UpdateExpense($input: expenseInput) {
+  updateExpense(input: $input) {
+    ok
+    expense {
+      id
+      expCategory {
+        id
+        name
+      }
+      amount
+      verBy {
+        id
+        username
+      }
+      createdAt
+    }
+    error {
+      message
+    }
+  }
+}

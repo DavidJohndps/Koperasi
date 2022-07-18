@@ -9,5 +9,8 @@ query ProductShortage($input: String) {
       basePrice
       profit
     }
+    error {
+      message
+    }
   }
 }

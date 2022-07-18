@@ -1,9 +1,10 @@
-const { ApolloError, UserInputError } = require("apollo-server-core");
-const { GraphQLScalarType, Kind, formatError } = require("graphql");
+const { ApolloError } = require("apollo-server-core");
+const { GraphQLScalarType, Kind } = require("graphql");
 const { GraphQLUpload } = require("graphql-upload");
 const { sign } = require("jsonwebtoken");
 const Crypto = require("crypto-js");
 const { flatten, isEmpty, round } = require("lodash");
+const moment = require("moment");
 require("dotenv").config();
 
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -15,6 +16,9 @@ const Product = require("./models/Product");
 const Transaction = require("./models/Transaction");
 const Activity = require("./models/Activity");
 const CompanyDetail = require("./models/CompanyDetail");
+const Expense = require("./models/Expense");
+const ExpenseCategory = require("./models/ExpenseCategory");
+const Budget = require("./models/Budget");
 
 checkEmail = async (email) => {
   try {
@@ -79,7 +83,7 @@ createActivity = async (
         ? `New ${afterDetails.name || "Transaction"} (${
             modelName || "Transactions"
           })`
-        : `Deleted ${beforeDetails.name} ${modelName ? modelName : Unknown}`
+        : `Deleted ${beforeDetails.name} ${modelName ? modelName : 'Unknown'}`
     }`;
 
     const changes = (before) => {
@@ -102,22 +106,6 @@ createActivity = async (
           )}`
         : `Deleted`
     }`;
-    // let desc = `${
-    //   !isEmpty(beforeDetails) && !isEmpty(afterDetails)
-    //     ? `Changes: ${beforeDetailsEntries.filter(([key, values]) => {
-    //         if (beforeDetails[key] != afterDetails[key])
-    //           return `"${key}: ${values} to ${afterDetails[key]}"`;
-    //       })}`
-    //     : isEmpty(beforeDetails) && !isEmpty(afterDetails)
-    //     ? `Added: ${afterDetailsEntries.filter(([key, values]) => {
-    //         if (isArray(values)) {
-    //           return `"${key}": ${JSON.stringify(values)}`;
-    //         } else return `"${key}": ${JSON.stringify(values)}`;
-    //       })}`
-    //     : `Deleted: ${afterDetailsEntries.filter(([key, values]) => {
-    //         return `"${key}": ${JSON.stringify(values)}`;
-    //       })}`
-    // }`;
     const result = await Activity.create([{ name, desc, verBy: userId }], {
       session: session || null,
     });
@@ -130,45 +118,46 @@ createActivity = async (
 const resolvers = {
   Upload: GraphQLUpload,
 
-  ASSETCODE: {
-    Tabungan: "12",
-    Giro: "13",
-    Deposito: "14",
-    SetaraKasLainnya: "19",
-    Piutang: "21",
-    PiutangAffiliasi: "22",
-    PiutangLain: "29",
-    SahamTetap: "31",
-    Saham: "32",
-    ObligasiPerusahaan: "33",
-    ObligasiPemerintah: "34",
-    SuratUtangLain: "35",
-    Reksadana: "36",
-    Kontrak: "37",
-    ModalLain: "38",
-    Investasi: "39",
-    Sepeda: "41",
-    SepedaMotor: "42",
-    Mobil: "43",
-    AlatTransportasiLain: "49",
-    LogamMulia: "51",
-    BatuMulia: "52",
-    BarangSeniAtauAntik: "53",
-    KapalPesiarPesawatHelikopter: "54",
-    PeraltanElektronikDanFurnitur: "55",
-    HartaBergerakLainnya: "59",
-    TanahatauBangunanTempatTinggal: "61",
-    TanahatauBangunanUsaha: "62",
-    TanahUntukLahanUsaha: "63",
-    HartaTidakBergerakLainnya: "69",
+  PROPERTYASSET: {
+    Permanen: 0,
+    TidakPermanen: 1,
   },
 
-  // CompanyDetail: {
-  //   asset: async ({ asset }, arg, { assetLoader }) => {
-  //     const result = await assetLoader.loadMany(asset);
-  //     return flatten(result);
-  //   },
-  // },
+  TANGIBLEASSET: {
+    Kelompok1: 0,
+    Kelompok2: 1,
+    Kelompok3: 2,
+    Kelompok4: 3,
+  },
+
+  INTANGIBLEASSET: {
+    Kelompok1: 0,
+    Kelompok2: 1,
+    Kelompok3: 2,
+    Kelompok4: 3,
+  },
+
+  Budget: {
+    user: async ({ user }, arg, { userLoader }) => {
+      const [result] = await userLoader.load(user);
+      return result;
+    },
+    verBy: async ({ verBy }, arg, { userLoader }) => {
+      const [result] = await userLoader.load(verBy);
+      return result;
+    },
+  },
+
+  Expense: {
+    expCategory: async ({ expCategory }, arg, { expCategoryLoader }) => {
+      const [result] = await expCategoryLoader.load(expCategory);
+      return result;
+    },
+    verBy: async ({ verBy }, arg, { userLoader }) => {
+      const [result] = await userLoader.load(verBy);
+      return result;
+    },
+  },
 
   Transaction: {
     product: async ({ product }, arg, { productLoader }) => {
@@ -199,8 +188,13 @@ const resolvers = {
           ok: true,
           companyDetail: doc,
         };
-      } catch (err) {
-        console.log(err);
+      } catch ({ message }) {
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
       }
     },
     Users: async (parent, params, { req }) => {
@@ -212,10 +206,75 @@ const resolvers = {
 
         return {
           ok: true,
-          doc: docs,
+          user: docs,
         };
-      } catch (err) {
-        console.log(err);
+      } catch ({ message }) {
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
+      }
+    },
+    ExpenseCategories: async (parent, params, { req }) => {
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const doc = await ExpenseCategory.find();
+
+        return {
+          ok: true,
+          expCategory: doc,
+        };
+      } catch ({ message }) {
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
+      }
+    },
+    Budgets: async (parent, params, { req }) => {
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const doc = await Budget.find().sort({ createdAt: "desc" });
+
+        return {
+          ok: true,
+          budget: doc,
+        };
+      } catch ({ message }) {
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
+      }
+    },
+    Expenses: async (parent, params, { req }) => {
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const doc = await Expense.find().sort({ createdAt: "desc" });
+
+        return {
+          ok: true,
+          expense: doc,
+        };
+      } catch ({ message }) {
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
       }
     },
     Products: async (parent, { input, stock, sort }, { req }) => {
@@ -236,8 +295,13 @@ const resolvers = {
           ok: true,
           product: result,
         };
-      } catch (err) {
-        console.log(err);
+      } catch ({ message }) {
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
       }
     },
     Transactions: async (parent, { isRecent, sort = "desc" }, { req }) => {
@@ -266,8 +330,13 @@ const resolvers = {
               .lte(new Date().setDate(date.getDate() + 1))
               .sort({ createdAt: sort }),
           };
-      } catch (err) {
-        console.log(err);
+      } catch ({ message }) {
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
       }
     },
     Activities: async (parent, { isRecent, sort }, { req }) => {
@@ -295,8 +364,55 @@ const resolvers = {
           ok: true,
           activity: doc,
         };
-      } catch (err) {
-        console.log(err);
+      } catch ({ message }) {
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
+      }
+    },
+    MonthlyIncomes: async (
+      parent,
+      { startDate },
+      { req, transactionLoader }
+    ) => {
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const ft = moment(startDate).set({
+          date: 1,
+          h: 0,
+          minute: 0,
+          s: 0,
+          ms: 0,
+        });
+        const now = moment();
+        const timeLapsed = now.diff(ft, "year");
+        if (timeLapsed >= 1) ft.add({ year: timeLapsed });
+        let result = [];
+        for (var i = 0; i <= 11; i++) {
+          const som = moment(ft);
+          const data = await transactionLoader.load(som);
+          data
+            ? result.push(data[0])
+            : result.push({ startDate: som.format("YYYY-MM-DD"), total: 0 });
+          ft.add({ month: 1 });
+        }
+
+        return {
+          ok: true,
+          monthlyIncome: result,
+        };
+      } catch ({ message }) {
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
       }
     },
   },
@@ -345,14 +461,21 @@ const resolvers = {
           ok: true,
           user: [Object.assign(user, { accessToken: accessToken })],
         };
-      } catch (err) {
-        console.log(err);
+      } catch ({ message }) {
+        console.log(message);
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
       }
     },
     async createUser(parent, { input }, { req }) {
       try {
-        // if (!req.userId)
-        //   throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
         let { password } = input;
         password = Crypto.AES.encrypt(password, SECRET_KEY).toString();
 
@@ -362,8 +485,13 @@ const resolvers = {
           ok: true,
           user: [doc],
         };
-      } catch (err) {
-        console.log(err);
+      } catch ({ message }) {
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
       }
     },
     async updateUser(parent, { input }, { req }) {
@@ -372,20 +500,29 @@ const resolvers = {
           throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
 
         const { id, ...inputted } = input;
+        let { password } = inputted;
         const doc = await User.findById(id);
 
         Object.keys(inputted).map((key) => {
-          doc[key] = inputted[key];
+          if (key == "password")
+            doc[key] = Crypto.AES.encrypt(password, SECRET_KEY).toString();
+          else doc[key] = inputted[key];
         });
+        console.log(doc);
 
         const result = await doc.save();
 
         return {
           ok: true,
-          doc: [result],
+          user: [result],
         };
-      } catch (err) {
-        console.log(err);
+      } catch ({ message }) {
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
       }
     },
     async createProduct(parent, { input }, { req, db }) {
@@ -397,17 +534,16 @@ const resolvers = {
 
         const { companyDetailId, id, ...productInput } = input;
 
-        const { basePrice, qty } = productInput;
+        const { basePrice, stock } = productInput;
 
-        // const doc = await Product.create({ ...productInput });
-        const doc = await Product.create([{ ...productInput }], {
+        const [doc] = await Product.create([{ ...productInput }], {
           session: session,
         });
         await CompanyDetail.findByIdAndUpdate(
-          { id: companyDetailId },
+          { _id: companyDetailId },
           {
             $inc: {
-              balance: -round(basePrice * parseFloat(qty), 2),
+              balance: -round(parseFloat(basePrice) * parseFloat(stock), 2),
             },
           },
           { session: session }
@@ -419,11 +555,18 @@ const resolvers = {
 
         return {
           ok: true,
-          product: [result],
+          product: [doc],
         };
       } catch (err) {
+        console.log(err.message);
         console.log(`all changes were rolled back, ${err}`);
         session.abortTransaction();
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
       }
     },
     async updateProduct(parent, { input }, { req, db }) {
@@ -435,11 +578,17 @@ const resolvers = {
 
         const { companyDetailId, id, ...productInput } = input;
 
-        const { basePrice, qty } = productInput;
+        const { basePrice, stock } = productInput;
 
         const doc = await Product.findById(id).session(session);
+        const { basePrice: beforePrice, stock: beforeStock } = doc;
 
         const before = JSON.parse(JSON.stringify(doc));
+
+        let difference =
+          parseFloat(stock) * basePrice - parseFloat(beforeStock) * beforePrice;
+
+        console.log(difference);
 
         Object.keys(productInput).map((key) => {
           doc[key] = productInput[key];
@@ -447,10 +596,10 @@ const resolvers = {
 
         await createActivity(before, doc, req.userId, session);
         await CompanyDetail.findByIdAndUpdate(
-          { id: companyDetailId },
+          { _id: companyDetailId },
           {
             $inc: {
-              balance: -round(basePrice * parseFloat(qty), 2),
+              balance: -round(difference, 2),
             },
           }
         );
@@ -467,25 +616,55 @@ const resolvers = {
       } catch (err) {
         console.log(`all changes were rolled back, ${err}`);
         session.abortTransaction();
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
       }
     },
-    async deleteProduct(parent, { id }, { req }) {
+    async deleteProduct(parent, { id, companyDetailId }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
       try {
         if (!req.userId)
           throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
 
-        const result = await Product.findByIdAndDelete(id);
+        const result = await Product.findByIdAndDelete(id).session(session);
+        const { stock, basePrice } = result;
 
         const before = JSON.parse(JSON.stringify(result));
 
-        await createActivity(before, null, req.userId);
+        await CompanyDetail.findByIdAndUpdate(
+          { _id: companyDetailId },
+          {
+            $inc: {
+              balance: round(parseFloat(stock) * basePrice, 2),
+            },
+          },
+          { session: session }
+        );
+
+        await createActivity(before, null, req.userId, session);
+        await session.commitTransaction();
+        await session.endSession();
+
+        console.log("Transaction completed");
 
         return {
           ok: true,
           product: [result],
         };
       } catch (err) {
-        console.log(err);
+        session.abortTransaction();
+        console.log(`all changes were rolled back, ${err}`);
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
       }
     },
     async createTransaction(parent, { input }, { req, db }) {
@@ -494,7 +673,7 @@ const resolvers = {
       try {
         const { companyDetailId, ...transactionInput } = input;
         const { product, qty, basePrice, profit, total } = transactionInput;
-        const doc = await Transaction.create([{ ...input }], {
+        const [doc] = await Transaction.create([{ ...input }], {
           session: session,
         });
         let productOps = [];
@@ -515,7 +694,7 @@ const resolvers = {
           );
         });
         await CompanyDetail.findByIdAndUpdate(
-          companyDetailId,
+          { _id: companyDetailId },
           {
             $inc: {
               balance: total,
@@ -533,91 +712,780 @@ const resolvers = {
         console.log("Transaction completed");
         return {
           ok: true,
-          transaction: doc,
+          transaction: [doc],
         };
       } catch (err) {
         console.log(`all changes were rolled back, ${err}`);
         session.abortTransaction();
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
       }
     },
-    async createAsset(parent, { input }, { req }) {
+    async createBudget(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const { companyDetailId, id, ...budgetInput } = input;
+
+        const { amount } = budgetInput;
+
+        const [doc] = await Budget.create([{ ...budgetInput }], {
+          session: session,
+        });
+        await CompanyDetail.findByIdAndUpdate(
+          { _id: companyDetailId },
+          {
+            $inc: {
+              balance: amount,
+            },
+          },
+          { session: session }
+        );
+        await createActivity(null, doc, req.userId, session);
+
+        await session.commitTransaction();
+        await session.endSession();
+
+        return {
+          ok: true,
+          budget: [doc],
+        };
+      } catch (err) {
+        console.log(`all changes were rolled back, ${err}`);
+        session.abortTransaction();
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
+      }
+    },
+    async updateBudget(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const { companyDetailId, id, ...budgetInput } = input;
+
+        const { amount } = budgetInput;
+
+        const doc = await Budget.findById(id).session(session);
+
+        const before = JSON.parse(JSON.stringify(doc));
+
+        let difference = 0;
+
+        Object.keys(budgetInput).map((key) => {
+          if (key == "amount") {
+            difference +=
+              amount > doc[key]
+                ? -parseFloat(doc[key] - amount)
+                : parseFloat(amount - doc[key]);
+            doc[key] = amount;
+          }
+          doc[key] = budgetInput[key];
+        });
+
+        await createActivity(before, doc, req.userId, session);
+        await CompanyDetail.findByIdAndUpdate(
+          { _id: companyDetailId },
+          {
+            $inc: {
+              balance: difference,
+            },
+          }
+        );
+
+        const result = await doc.save();
+
+        await session.commitTransaction();
+        await session.endSession();
+
+        return {
+          ok: true,
+          budget: [result],
+        };
+      } catch (err) {
+        console.log(`all changes were rolled back, ${err}`);
+        session.abortTransaction();
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
+      }
+    },
+    async createExpense(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const { companyDetailId, id, ...expInput } = input;
+
+        const { amount } = expInput;
+
+        const [doc] = await Expense.create([{ ...expInput }], {
+          session: session,
+        });
+        await CompanyDetail.findByIdAndUpdate(
+          { _id: companyDetailId },
+          {
+            $inc: {
+              balance: -amount,
+            },
+          },
+          { session: session }
+        );
+        await createActivity(null, doc, req.userId, session);
+
+        await session.commitTransaction();
+        await session.endSession();
+
+        return {
+          ok: true,
+          expense: [doc],
+        };
+      } catch (err) {
+        console.log(`all changes were rolled back, ${err}`);
+        session.abortTransaction();
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
+      }
+    },
+    async updateExpense(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const { companyDetailId, id, ...expInput } = input;
+
+        const { amount } = expInput;
+
+        const doc = await Expense.findById(id).session(session);
+
+        const before = JSON.parse(JSON.stringify(doc));
+
+        let difference = 0;
+
+        Object.keys(expInput).map((key) => {
+          if (key == "amount") {
+            difference +=
+              amount > doc[key]
+                ? parseFloat(doc[key] - amount)
+                : -parseFloat(amount - doc[key]);
+            doc[key] = expInput[key];
+          }
+          doc[key] = expInput[key];
+        });
+
+        await createActivity(before, doc, req.userId, session);
+        await CompanyDetail.findByIdAndUpdate(
+          { _id: companyDetailId },
+          {
+            $inc: {
+              balance: difference,
+            },
+          }
+        );
+
+        const result = await doc.save();
+
+        await session.commitTransaction();
+        await session.endSession();
+
+        return {
+          ok: true,
+          expense: [result],
+        };
+      } catch (err) {
+        console.log(`all changes were rolled back, ${err}`);
+        session.abortTransaction();
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
+      }
+    },
+    async createExpenseCategory(parent, { input }, { req }) {
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const { id, ...expCatInput } = input;
+        const doc = await ExpenseCategory.create({ ...expCatInput });
+
+        await createActivity(null, doc, req.userId);
+
+        return {
+          ok: true,
+          expCategory: [doc],
+        };
+      } catch ({ message }) {
+        console.log(message);
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
+      }
+    },
+    async updateExpenseCategory(parent, { input }, { req }) {
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const { id, ...expCatInput } = input;
+
+        const doc = await ExpenseCategory.findById(id);
+        const before = JSON.parse(JSON.stringify(doc));
+        Object.keys(expCatInput).map((key) => (doc[key] = expCatInput[key]));
+        const result = await doc.save();
+
+        await createActivity(before, doc, req.userId);
+
+        return {
+          ok: true,
+          expCategory: [result],
+        };
+      } catch ({ message }) {
+        console.log(message);
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
+      }
+    },
+    async deleteExpenseCategory(parent, { id }, { req }) {
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const doc = await ExpenseCategory.findByIdAndDelete(id);
+
+        return {
+          ok: true,
+          expCategory: [doc],
+        };
+      } catch (err) {
+        console.log(err);
+      }
+    },
+    async createPropertyAsset(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const { companyDetailId, ...assetInput } = input;
+        const { boughtPrice } = assetInput;
+        const companyDetail = await CompanyDetail.findById(
+          companyDetailId
+        ).session(session);
+        const asset = companyDetail.propertyAsset.create({ ...assetInput });
+        const after = JSON.parse(JSON.stringify(asset));
+
+        await CompanyDetail.findByIdAndUpdate(
+          { _id: companyDetailId },
+          {
+            $inc: {
+              balance: -boughtPrice,
+            },
+            $push: {
+              tangibleAsset: asset,
+            },
+          },
+          { session: session }
+        );
+
+        await createActivity(null, after, req.userId);
+
+        await session.commitTransaction();
+        await session.endSession();
+
+        return {
+          ok: true,
+          propertyAsset: asset,
+        };
+      } catch (err) {
+        session.abortTransaction();
+        console.log(`all changes were rolled back, ${err}`);
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
+      }
+    },
+    async updatePropertyAsset(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const {
+          id,
+          companyDetailId,
+          boughtPrice: afterUpdate,
+          ...assetInput
+        } = input;
+        const companyDetail = await CompanyDetail.findById(
+          companyDetailId
+        ).session(session);
+        const doc = companyDetail.propertyAsset.id(id);
+        const { boughtPrice: beforeUpdate } = doc;
+        const difference =
+          beforeUpdate >= afterUpdate
+            ? beforeUpdate - afterUpdate
+            : -(afterUpdate - beforeUpdate);
+
+        const before = JSON.parse(JSON.stringify(doc));
+
+        Object.keys({ ...assetInput, boughtPrice: afterUpdate }).map((key) => {
+          if (key == "boughtPrice") doc[key] = afterUpdate;
+          doc[key] = assetInput[key];
+        });
+
+        await CompanyDetail.findByIdAndUpdate(
+          { _id: companyDetailId },
+          {
+            $inc: {
+              balance: difference,
+            },
+          },
+          { session: session }
+        );
+
+        const result = await companyDetail.save();
+        const updatedDoc = result.propertyAsset.id(id);
+        await createActivity(before, updatedDoc, req.userId, session);
+        await session.commitTransaction();
+        await session.endSession();
+
+        return {
+          ok: true,
+          propertyAsset: updatedDoc,
+        };
+      } catch (err) {
+        session.abortTransaction();
+        console.log(`all changes were rolled back, ${err}`);
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
+      }
+    },
+    async deletePropertyAsset(parent, { id, companyDetailId }, { req }) {
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const companyDetail = await CompanyDetail.findById(companyDetailId);
+        const doc = companyDetail.propertyAsset.id(id);
+        await createActivity(doc, null, req.userId);
+        await doc.remove();
+        await companyDetail.save()
+
+        return {
+          ok: true,
+          propertyAsset: doc,
+        };
+      } catch ({ message }) {
+        console.log(message);
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
+      }
+    },
+    async createTangibleAsset(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const { companyDetailId, ...assetInput } = input;
+        const { boughtPrice } = assetInput;
+        const companyDetail = await CompanyDetail.findById(
+          companyDetailId
+        ).session(session);
+        const asset = companyDetail.tangibleAsset.create({ ...assetInput });
+
+        await CompanyDetail.findByIdAndUpdate(
+          { _id: companyDetailId },
+          {
+            $inc: {
+              balance: -boughtPrice,
+            },
+            $push: {
+              tangibleAsset: asset,
+            },
+          },
+          { session: session }
+        );
+
+        await createActivity(null, asset, req.userId, session);
+
+        await session.commitTransaction();
+        await session.endSession();
+
+        return {
+          ok: true,
+          tangibleAsset: asset,
+        };
+      } catch (err) {
+        session.abortTransaction();
+        console.log(`all changes were rolled back, ${err}`);
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
+      }
+      // try {
+      //   if (!req.userId)
+      //     throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+      //   // const doc = await Asset.create({ ...input });
+
+      //   const { companyDetailId, ...assetInput } = input;
+      //   const companyDetail = await CompanyDetail.findById(companyDetailId);
+      //   const asset = companyDetail.tangibleAsset.create({ ...assetInput });
+      //   companyDetail.tangibleAsset.push(asset);
+      //   const result = await companyDetail.save();
+
+      //   await createActivity(null, asset, req.userId);
+
+      //   return {
+      //     ok: true,
+      //     tangibleAsset: result.tangibleAsset.id(asset.id),
+      //   };
+      // } catch (err) {
+      //   console.log(err);
+      // }
+    },
+    async updateTangibleAsset(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const {
+          id,
+          companyDetailId,
+          boughtPrice: afterUpdate,
+          ...assetInput
+        } = input;
+        const companyDetail = await CompanyDetail.findById(
+          companyDetailId
+        ).session(session);
+        const doc = companyDetail.tangibleAsset.id(id);
+        const { boughtPrice: beforeUpdate } = doc;
+        const difference =
+          beforeUpdate >= afterUpdate
+            ? beforeUpdate - afterUpdate
+            : -(afterUpdate - beforeUpdate);
+
+        const before = JSON.parse(JSON.stringify(doc));
+
+        Object.keys({ ...assetInput, boughtPrice: afterUpdate }).map((key) => {
+          if (key == "boughtPrice") doc[key] = afterUpdate;
+          else doc[key] = assetInput[key];
+        });
+
+        await CompanyDetail.findByIdAndUpdate(
+          { _id: companyDetailId },
+          {
+            $inc: {
+              balance: difference,
+            },
+          },
+          { session }
+        );
+
+        const result = await companyDetail.save();
+        const updatedDoc = result.tangibleAsset.id(id);
+        await createActivity(before, updatedDoc, req.userId, session);
+        await session.commitTransaction();
+        await session.endSession();
+
+        return {
+          ok: true,
+          tangibleAsset: updatedDoc,
+        };
+      } catch (err) {
+        session.abortTransaction();
+        console.log(`all changes were rolled back, ${err}`);
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
+      }
+    },
+    async deleteTangibleAsset(parent, { id, companyDetailId }, { req }) {
+      try {
+        if (!req.userId)
+          throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
+
+        const companyDetail = await CompanyDetail.findById(companyDetailId);
+        const doc = companyDetail.tangibleAsset.id(id)
+        await createActivity(doc, null, req.userId);
+
+        await doc.remove();
+        await companyDetail.save()
+
+        return {
+          ok: true,
+          tangibleAsset: doc,
+        };
+      } catch ({ message }) {
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
+      }
+    },
+    async createIntangibleAsset(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
       try {
         if (!req.userId)
           throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
 
         // const doc = await Asset.create({ ...input });
+        const { companyDetailId, boughtPrice, ...assetInput } = input;
+        const companyDetail = await CompanyDetail.findById(
+          companyDetailId
+        ).session(session);
+        const asset = companyDetail.intangibleAsset.create({
+          ...assetInput,
+          boughtPrice,
+        });
 
-        const [doc] = await CompanyDetail.find();
+        await CompanyDetail.findByIdAndUpdate(
+          { _id: companyDetailId },
+          {
+            $inc: {
+              balance: -boughtPrice,
+            },
+            $push: {
+              intangibleAsset: asset,
+            },
+          }
+        );
+        await createActivity(null, asset, req.userId);
+        await session.commitTransaction();
+        await session.endSession();
 
-        const before = JSON.parse(JSON.stringify(doc));
-
-        doc.asset.push({ ...input });
-
-        console.log(doc.asset);
-
-        // const result = await doc.save();
-
-        // const after = JSON.parse(JSON.stringify(result));
-
-        // await createActivity(before, after, req.userId);
-
-        // return {
-        //   ok: true,
-        //   asset: result.asset,
-        // };
+        return {
+          ok: true,
+          intangibleAsset: result.intangibleAsset.id(asset.id),
+        };
       } catch (err) {
-        console.log(err);
+        session.abortTransaction();
+        console.log(`all changes were rolled back, ${err}`);
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
       }
     },
-    async updateAsset(parent, { input }, { req }) {
+    async updateIntangibleAsset(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
       try {
         if (!req.userId)
           throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
 
-        const { id, ...assetInput } = input;
-        const [companyDetail] = await CompanyDetail.find();
-        const doc = companyDetail.asset.id(id);
+        const {
+          id,
+          companyDetailId,
+          boughtPrice: afterUpdate,
+          ...assetInput
+        } = input;
+        const companyDetail = await CompanyDetail.findById(
+          companyDetailId
+        ).session(session);
+        const doc = companyDetail.intangibleAsset.id(id);
+        const { boughtPrice: beforeUpdate } = doc;
+        const difference =
+          beforeUpdate >= afterUpdate
+            ? beforeUpdate - afterUpdate
+            : -(afterUpdate - beforeUpdate);
 
-        const before = JSON.parse(JSON.stringify(companyDetail));
+        const before = JSON.parse(JSON.stringify(doc));
 
-        Object.keys(assetInput).map((key) => {
+        Object.keys({ ...assetInput, boughtPrice: afterUpdate }).map((key) => {
+          if (key == "boughtPrice") doc[key] = afterUpdate;
           doc[key] = assetInput[key];
         });
 
-        const result = await companyDetail.save();
-        const after = JSON.parse(JSON.stringify(result));
-        await createActivity(before, after, req.userId);
+        await CompanyDetail.findByIdAndUpdate(
+          {
+            _id: companyDetailId,
+          },
+          {
+            $inc: {
+              balance: difference,
+            },
+          },
+          { session }
+        );
 
-        console.log(result.asset.id(id));
+        const result = await companyDetail.save();
+        const updatedDoc = result.intangibleAsset.id(id);
+
+        await createActivity(before, updatedDoc, req.userId, session);
+        await session.commitTransaction();
+        await session.endSession();
 
         return {
           ok: true,
-          asset: result.asset.id(id),
+          intangibleAsset: updatedDoc,
         };
       } catch (err) {
-        console.log(err);
+        session.abortTransaction();
+        console.log(`all changes were rolled back, ${err}`);
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
       }
     },
-    async deleteAsset(parent, { id }, { req }) {
+    async deleteIntangibleAsset(parent, { id, companyDetailId }, { req }) {
       try {
         if (!req.userId)
           throw new ApolloError("Not-Authorized", "UNAUTHENTICATED");
 
-        const doc = await Asset.findByIdAndDelete(id);
+        const companyDetail = await CompanyDetail.findById(companyDetailId);
+        const doc = companyDetail.intangibleAsset.id(id);
+        await createActivity(doc, null, req.userId);
 
-        const before = JSON.parse(JSON.stringify(doc));
-
-        await createActivity(before, null, req.userId);
+        await doc.remove();
+        await companyDetail.save()
 
         return {
           ok: true,
-          asset: [doc],
+          intangibleAsset: doc,
         };
-      } catch (err) {
-        console.log(err);
+      } catch ({ message }) {
+        console.log(message);
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
       }
     },
-    async updateCompanyDetail(parent, { input }, { req, db }) {
+    async updateTaxReport(parent, { input }, { req, db }) {
+      const session = await db.startSession();
+      session.startTransaction();
+      try {
+        const { companyDetailId, report } = input;
+
+        const companyDetail = await CompanyDetail.findById(
+          companyDetailId
+        ).session(session);
+        let total = 0;
+
+        for (let { id, amount, ...detail } of report) {
+          if (!id) {
+            total += amount;
+            const taxReport = companyDetail.taxReport.create({
+              ...detail,
+              amount,
+            });
+            await companyDetail.taxReport.push(taxReport);
+            await createActivity(null, taxReport, req.userId, session);
+          } else {
+            const doc = companyDetail.taxReport.id(id);
+            const { amount: beforeAmount } = doc;
+            let difference =
+              beforeAmount >= amount
+                ? beforeAmount - amount
+                : -(amount - beforeAmount);
+            total += difference;
+            const before = JSON.parse(JSON.stringify(doc));
+            // edit tax report
+            Object.keys({ ...detail, amount }).map((key) => {
+              if (key == "amount") doc[key] = amount;
+              else doc[key] = detail[key];
+            });
+            await createActivity(before, doc, req.userId, session);
+          }
+        }
+
+        const result = await companyDetail.save();
+        await CompanyDetail.findByIdAndUpdate(
+          { _id: companyDetailId },
+          {
+            $inc: {
+              balance: -total,
+            },
+          },
+          { session: session }
+        );
+        await session.commitTransaction();
+        await session.endSession();
+
+        return {
+          ok: true,
+          tax: result.taxReport,
+        };
+      } catch (err) {
+        session.abortTransaction();
+        console.log(`All changes were rolled back, ${err}`);
+        return {
+          ok: false,
+          error: {
+            message: err.message,
+          },
+        };
+      }
+    },
+    async updateCompanyDetail(parent, { input }, { req }) {
       try {
         if (!req.userId) {
           session.abortTransaction();
@@ -627,10 +1495,11 @@ const resolvers = {
         const { id, ...detail } = input;
 
         if (!id) {
+          console.log(detail);
           const doc = await CompanyDetail.create({ ...detail });
+          s;
 
-          const after = JSON.parse(JSON.stringify(doc));
-          await createActivity(null, after, req.userId);
+          await createActivity(null, doc, req.userId);
           console.log("Company Detail Updated");
 
           return {
@@ -641,20 +1510,24 @@ const resolvers = {
         const doc = await CompanyDetail.findById(id);
         const before = JSON.parse(JSON.stringify(doc));
         Object.keys(detail).map((key) => {
-          if (key == "balance") doc[key] += parseFloat(detail[key]);
           doc[key] = detail[key];
         });
 
         const result = await doc.save();
-        const after = JSON.parse(JSON.stringify(result));
-        await createActivity(before, after, req.userId);
+        await createActivity(before, result, req.userId);
 
         return {
           ok: true,
           companyDetail: result,
         };
-      } catch (err) {
-        console.log(err);
+      } catch ({ message }) {
+        console.log(message);
+        return {
+          ok: false,
+          error: {
+            message,
+          },
+        };
       }
     },
   },

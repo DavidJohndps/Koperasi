@@ -1,0 +1,18 @@
+mutation deletePropertyAsset($id: String!, $companyDetailId: ID!) {
+  deletePropertyAsset(id: $id, companyDetailId: $companyDetailId) {
+    ok
+    propertyAsset {
+      id
+      name
+      boughtPrice
+      boughtSince
+      depCategory
+      depAmount
+      timePeriod
+      desc
+    }
+    error {
+      message
+    }
+  }
+}

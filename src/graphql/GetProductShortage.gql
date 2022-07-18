@@ -11,5 +11,8 @@ query GetProductShortage($stock: Int, $sort: SORTING) {
       createdAt
       updatedAt
     }
+    error {
+      message
+    }
   }
 }

@@ -1,0 +1,17 @@
+mutation updateTaxReport($input: taxReportInput) {
+  updateTaxReport(input: $input) {
+    ok
+    taxReport {
+      id
+      name
+      nptn
+      amount
+      isPaid
+      dueDate
+      createdAt
+    }
+    error {
+      message
+    }
+  }
+}

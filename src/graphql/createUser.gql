@@ -1,14 +1,18 @@
 mutation createUser($input: userInput) {
-    createUser(input: $input) {
-        ok
-        user {
-            id
-            email
-            username
-            npwp
-            position
-            address
-            accessToken
-        }
+  createUser(input: $input) {
+    ok
+    user {
+      id
+      email
+      username
+      npwp
+      position
+      address
+      phoneNumber
+      accessToken
     }
+    error {
+      message
+    }
+  }
 }

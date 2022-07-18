@@ -8,6 +8,10 @@ query GetUsers {
       npwp
       position
       address
+      phoneNumber
+    }
+    error {
+      message
     }
   }
 }

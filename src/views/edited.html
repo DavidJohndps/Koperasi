@@ -1,0 +1,154 @@
+<section slot="pdf-content">
+  <section class="v-card v-sheet theme--light" width="70%">
+    <div style="outline-style: solid">
+      <p class="text-center">{{ CompanyDetail.name }}</p>
+      <p class="text-center">Laporan Neraca Keuangan</p>
+      <p class="text-center">Periode {{ Today }}</p>
+    </div>
+    <section class="v-card__text" v-show="isProductLoading">
+      <div class="row">
+        <!-- Aset Cepat Cair & Tetap -->
+        <div class="h-100 col" style="outline-style: solid">
+          <div class="row">
+            <!-- Asset Cepat Cair-->
+            <div class="col col-12">
+              <h2>ASET LANCAR</h2>
+              <div class="row">
+                <!-- Uang -->
+                <div class="col col-12" cols="12">
+                  <div class="row">
+                    <div class="col">Kas</div>
+                    <div
+                      class="col text-right"
+                      v-text="CompanyDetail.balance"
+                    ></div>
+                  </div>
+                </div>
+                <!-- Besar Inventory -->
+                <div class="col col-12" cols="12">
+                  <div class="row">
+                    <div class="col">Persediaan</div>
+                    <div
+                      v-text="InventoryNetworth"
+                      class="col text-right"
+                    ></div>
+                  </div>
+                </div>
+                <!-- Jumlah Asset Lancar -->
+                <div class="col col-12" cols="12">
+                  <div class="row">
+                    <div class="col">
+                      <h3>Jumlah Aset Lancar</h3>
+                    </div>
+                    <div
+                      v-text="TotalCashFlow"
+                      class="col text-right text-decoration-underline font-weight-medium"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Asset Tetap -->
+            <div class="col col-12" cols="12">
+              <h2>ASET TIDAK LANCAR</h2>
+              <div class="row">
+                <div
+                  class="col col-12"
+                  cols="12"
+                  v-for="Asset of CompanyAsset"
+                  :key="Asset.name"
+                >
+                  <div class="row">
+                    <div class="col" v-text="upperFirst(Asset.name)"></div>
+                    <div v-text="Asset.total" class="col text-right"></div>
+                  </div>
+                </div>
+                <div class="col col-12" cols="12">
+                  <div class="row">
+                    <div class="col">Akumulasi Penyusutan Asset Tetap</div>
+                    <div
+                      v-text="AssetDepreciation"
+                      class="col text-right"
+                    ></div>
+                  </div>
+                </div>
+                <!-- Jumlah Aset Tidak Lancar -->
+                <div class="col col-12" cols="12">
+                  <div class="row">
+                    <div class="col">
+                      <h3>Jumlah Aset Tidak Lancar</h3>
+                    </div>
+                    <div
+                      v-text="TotalAssetNetworth"
+                      class="col text-right text-decoration-underline font-weight-medium"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Jumlah Asset -->
+            <div class="col col-12" cols="12">
+              <div class="row">
+                <div class="col">
+                  <h2>Jumlah Aset</h2>
+                </div>
+                <div
+                  v-text="TotalAssetNetworth + TotalCashFlow"
+                  class="col text-right text-decoration-underline font-weight-bold"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Liablitas & Ekuitas -->
+        <v-col class="h-100" style="outline-style: solid">
+          <v-row>
+            <!-- Liabilitas -->
+            <v-col cols="12">
+              <h2>LIABILITAS</h2>
+            </v-col>
+            <!-- Ekuitas -->
+            <v-col cols="12">
+              <h2>EKUITAS</h2>
+              <v-row>
+                <!-- Laba Berjalan -->
+                <v-col cols="12">
+                  <v-row>
+                    <v-col> Laba Berjalan </v-col>
+                    <v-col
+                      class="text-right"
+                      v-text="CompanyDetail.netProfit"
+                    ></v-col>
+                  </v-row>
+                </v-col>
+                <v-col cols="12">
+                  <v-row>
+                    <v-col>
+                      <h3>Jumlah Ekuitas</h3>
+                    </v-col>
+                    <v-col
+                      v-text="CompanyDetail.netProfit"
+                      class="text-right text-decoration-underline font-weight-medium"
+                    ></v-col>
+                  </v-row>
+                </v-col>
+              </v-row>
+            </v-col>
+            <!-- Jumlah Kewajiban & Ekuitas -->
+            <v-col cols="12">
+              <v-row>
+                <v-col>
+                  <h2>JUMLAH KEWAJIBAN DAN EKUITAS</h2>
+                </v-col>
+                <v-col
+                  v-text="CompanyDetail.netProfit"
+                  class="text-right text-decoration-underline font-weight-bold"
+                ></v-col>
+              </v-row>
+            </v-col>
+          </v-row>
+        </v-col>
+      </div>
+    </section>
+  </section>
+</section>

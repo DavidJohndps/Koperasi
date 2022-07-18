@@ -8,14 +8,47 @@ query GetCompanyDetails {
       balance
       revenue
       netProfit
-      asset {
+      tangibleAsset {
         id
         name
-        assetCode
         boughtSince
         boughtPrice
+        depCategory
+        depAmount
+        timePeriod
         desc
       }
+      intangibleAsset {
+        id
+        name
+        boughtSince
+        boughtPrice
+        depCategory
+        depAmount
+        timePeriod
+        desc
+      }
+      propertyAsset {
+        id
+        name
+        boughtSince
+        boughtPrice
+        depCategory
+        depAmount
+        timePeriod
+        desc
+      }
+      taxReport {
+        id
+        name
+        nptn
+        amount
+        isPaid
+        dueDate
+      }
+    }
+    error {
+      message
     }
   }
 }

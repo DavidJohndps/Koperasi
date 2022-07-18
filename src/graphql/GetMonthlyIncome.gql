@@ -1,0 +1,12 @@
+query GetMonthlyIncomes($startDate: String!) {
+  MonthlyIncomes(startDate: $startDate) {
+    ok
+    monthlyIncome {
+      startDate
+      total
+    }
+    error {
+      message
+    }
+  }
+}

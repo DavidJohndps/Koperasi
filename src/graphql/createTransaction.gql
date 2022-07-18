@@ -18,5 +18,8 @@ mutation CreateTransaction($input: transactionInput) {
       }
       createdAt
     }
+    error {
+      message
+    }
   }
 }

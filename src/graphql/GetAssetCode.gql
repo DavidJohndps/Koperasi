@@ -1,7 +1,0 @@
-query GetAssetCode{
-  __type(name: "ASSETCODE") {
-    enumValues {
-      name
-    }
-  }
-}

@@ -1,0 +1,12 @@
+mutation CreateExpenseCategory($input: expCategoryInput) {
+  createExpenseCategory(input: $input) {
+    ok
+    expCategory {
+      id
+      name
+    }
+    error {
+      message
+    }
+  }
+}

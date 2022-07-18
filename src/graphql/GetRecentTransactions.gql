@@ -19,5 +19,8 @@ query GetRecentTransactions($isRecent: Boolean) {
       }
       createdAt
     }
+    error {
+      message
+    }
   }
 }

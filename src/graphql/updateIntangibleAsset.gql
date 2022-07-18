@@ -1,0 +1,18 @@
+mutation updateIntangibleAsset($input: intangibleAssetInput) {
+  updateTangibleAsset(input: $input) {
+    ok
+    intangibleAsset {
+      id
+      name
+      boughtPrice
+      boughtSince
+      depCategory
+      depAmount
+      timePeriod
+      desc
+    }
+    error {
+      message
+    }
+  }
+}

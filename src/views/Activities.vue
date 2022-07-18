@@ -20,8 +20,8 @@ export default {
   },
   computed: {
     Activities() {
-      return this.$store.getters.getActivities
-    }
+      return this.$store.getters.getActivities;
+    },
   },
   data() {
     return {
@@ -34,8 +34,9 @@ export default {
     activities: {
       query: GET_ACTIVITY,
       update: (data) => data.Activities.activity,
-      result: ({ data }) =>
-        store.commit("addActivity", data.Activities.activity),
+      result({ data }) {
+        store.commit("addActivity", data.Activities.activity);
+      },
     },
   },
 };

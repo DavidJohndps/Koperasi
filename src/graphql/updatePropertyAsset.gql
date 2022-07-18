@@ -1,0 +1,18 @@
+mutation updatePropertyAsset($input: propertyAssetInput) {
+  updatePropertyAsset(input: $input) {
+    ok
+    propertyAsset {
+      id
+      name
+      boughtPrice
+      boughtSince
+      depCategory
+      depAmount
+      timePeriod
+      desc
+    }
+    error {
+      message
+    }
+  }
+}

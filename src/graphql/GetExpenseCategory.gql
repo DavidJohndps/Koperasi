@@ -1,0 +1,12 @@
+query GetExpenseCategory {
+  ExpenseCategories {
+    ok
+    expCategory {
+      id
+      name
+    }
+    error {
+      message
+    }
+  }
+}

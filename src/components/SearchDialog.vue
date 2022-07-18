@@ -52,9 +52,11 @@
                     <v-text-field
                       v-bind="attrs"
                       v-on="on"
-                      v-model="item.qty"
+                      v-model.number="item.qty"
                       class="width-200"
                       min="1"
+                      :max="isEmpty(item)"
+                      type="number"
                       rounded
                       single-line
                       solo
@@ -79,6 +81,7 @@
                         icon
                         slot="append-outer"
                         color="blue"
+                        :disabled="isEmpty(item)"
                         @click="addCartItem(item)"
                         >mdi-cart-plus
                       </v-icon>

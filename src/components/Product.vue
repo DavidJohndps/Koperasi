@@ -61,31 +61,34 @@
         <v-card-text>
           <v-row>
             <v-col cols="12">
-              <v-text-field v-model="input.name" label="Name"></v-text-field>
+              <v-text-field v-model.trim="input.name" :rules="rules.name" label="Name"></v-text-field>
             </v-col>
             <v-col cols="12">
               <v-text-field
-                v-model="input.desc"
+                v-model.trim="input.desc"
                 label="Description"
               ></v-text-field>
             </v-col>
             <v-col cols="12">
               <v-text-field
-                v-model="input.basePrice"
+                v-model.number="input.basePrice"
+                :rules="rules.basePrice"
                 type="number"
                 label="Base Price"
               ></v-text-field>
             </v-col>
             <v-col cols="12">
               <v-text-field
-                v-model="input.profit"
+                v-model.number="input.profit"
+                :rules="rules.profit"
                 type="number"
                 label="Profit"
               ></v-text-field>
             </v-col>
             <v-col cols="12">
               <v-text-field
-                v-model="input.stock"
+                v-model.number="input.stock"
+                :rules="rules.stock"
                 type="number"
                 label="Stock"
               ></v-text-field>
@@ -95,7 +98,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="green darken-1" text @click="cancel"> Disagree </v-btn>
-          <v-btn color="green darken-1" text @click="updateProduct">
+          <v-btn color="green darken-1" text @click="updateProduct" :disabled="!input.name || !input.basePrice || !input.profit || !input.stock">
             Agree
           </v-btn>
         </v-card-actions>
@@ -113,7 +116,7 @@ export default {
   computed: {
     CurrentRoute() {
       return this.$store.getters.getCurrentRoute;
-    }
+    },
   },
   data() {
     return {
@@ -124,6 +127,12 @@ export default {
         basePrice: null,
         profit: null,
         stock: null,
+      },
+      rules: {
+        name: [v => !!v || 'Name field is required'],
+        basePrice: [v => !!v || 'Base Price field is required'],
+        profit: [v => !!v || 'Profit field is required'],
+        stock: [v => !!v || 'Stock field is required'],
       },
       dialog: false,
     };
@@ -141,12 +150,14 @@ export default {
     },
     async updateProduct() {
       try {
+        const { id: companyDetailId } = this.$store.getters.getCompanyDetails;
         const { basePrice, stock, profit, ...input } = this.input;
         const result = await this.$apollo.mutate({
           mutation: UPDATE_PRODUCT,
           variables: {
             input: {
               ...input,
+              companyDetailId,
               basePrice: parseFloat(basePrice),
               profit: parseInt(profit),
               stock: parseInt(stock),
@@ -154,27 +165,33 @@ export default {
           },
         });
         const { ok, product, error } = await result.data.updateProduct;
-        if (!ok) alert(error);
+        if (!ok) alert(error.message);
         else {
           this.$store.commit("updateProduct", product);
           this.$emit("updatedProduct");
           this.dialog = !this.dialog;
         }
-      } catch (err) {
-        alert(err);
+      } catch ({ message }) {
+        alert(message);
       }
     },
     async deleteProduct() {
-      const result = await this.$apollo.mutate({
-        mutation: DELETE_PRODUCT,
-        variables: {
-          id: this.product.id,
-        },
-      });
-      const { ok, error } = result.data.deleteProduct;
-      if (!ok) alert(error);
-      else {
-        this.$store.commit("deleteProduct", this.product);
+      try {
+        const {id: companyDetailId} = this.$store.getters.getCompanyDetails
+        const result = await this.$apollo.mutate({
+          mutation: DELETE_PRODUCT,
+          variables: {
+            companyDetailId,
+            id: this.product.id,
+          },
+        });
+        const { ok, error } = result.data.deleteProduct;
+        if (!ok) alert(error.message);
+        else {
+          this.$store.commit("deleteProduct", this.product);
+        }
+      } catch ({ message }) {
+        alert(message)
       }
     },
   },
